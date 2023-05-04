@@ -48,10 +48,27 @@ running_mean <- rollapply(NO_df$Oldenburg_VS, window_size, FUN = mean, na.rm = T
 # substitutes all missing values for the running mean
 NO_OL_df$`ug/m^3`[is.na(NO_OL_df$`ug/m^3`)] <- running_mean[is.na(NO_OL_df$`ug/m^3`)]
 
+# Create new columns with only day and month information
+NO_OL_df$DayMonth <- format(NO_OL_df$Datum, "%m-%d")
+NO_hist_OL_df$DayMonth <- format(NO_hist_OL_df$Datum, "%m-%d")
+
+# Merge the DataFrames based on the common day and month
+combined_NO_OL_df <- merge(NO_hist_OL_df, NO_OL_df, by.x = "DayMonth", by.y = "DayMonth")
+colnames(combined_NO_OL_df) <- c("DayMonth"," Datum_hist","Uhrzeit_hist", 
+                                 "ug/^3_hist","Datum_ak","Uhrzeit_ak", "ug/m^3_ak")
+
+
+combined_NO_OL_filtered_df<- combined_NO_OL_df %>%
+   filter(DayMonth >= "02-15" & DayMonth <= "03-15")
+
+combined_NO_OL_filtered_df <- combined_NO_OL_filtered_df %>%
+                    select(-DayMonth)
+
 ```
 
 
 ```{r pressure}
+
 
 ```
 
