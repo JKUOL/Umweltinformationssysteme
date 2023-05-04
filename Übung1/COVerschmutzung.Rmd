@@ -1,0 +1,58 @@
+---
+title: "COVerschmutzung"
+output: html_document
+date: "2023-05-02"
+---
+
+``` {r setup, include=FALSE}
+# clean environment
+rm(list=ls())
+cat("\014")
+
+# sets path to file
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+library(tidyverse)
+library(ggplot2)
+library(zoo)
+```
+
+
+```{r, data cleaning}
+# load csv files
+NO_df <- read.csv2("city_data/NO2.csv")
+
+NO_hist_OL_df <- read.csv2("city_data_historic/Oldenburg_VS_181228_190328.csv")
+
+# change col Datum to date format
+NO_hist_OL_df$Datum <- as.Date(NO_hist_OL_df$Datum, format = "%d.%m.%y")
+
+# calculates walking mean for NAs
+window_size <- 48  # number of elements used for walking mean
+running_mean <- rollapply(NO_hist_OL_df$ug.m, window_size, FUN = mean, na.rm = TRUE, partial = TRUE, align = "right")
+
+# substitutes all missing values for the running mean
+NO_hist_OL_df$ug.m[is.na(NO_hist_OL_df$ug.m)] <- running_mean[is.na(NO_hist_OL_df$ug.m)]
+
+NO_OL_df <- data.frame(NO_df$Datum,NO_df$Uhrzeit,NO_df$Oldenburg_VS)
+
+colnames(NO_OL_df) <- c("Datum", "Uhrzeit", "ug/m^3")
+# change col Datum to date format
+NO_OL_df$Datum <- as.Date(NO_OL_df$Datum, format = "%d.%m.%y")
+
+
+# calculates walking mean for NAs
+window_size <- 48  # number of elements used for walking mean
+running_mean <- rollapply(NO_df$Oldenburg_VS, window_size, FUN = mean, na.rm = TRUE, partial = TRUE, align = "right")
+
+# substitutes all missing values for the running mean
+NO_OL_df$`ug/m^3`[is.na(NO_OL_df$`ug/m^3`)] <- running_mean[is.na(NO_OL_df$`ug/m^3`)]
+
+
+```
+
+
+```{r pressure, echo=FALSE}
+
+```
+

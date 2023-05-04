@@ -1,0 +1,121 @@
+---
+title: "Fish_class"
+output: html_document
+date: "2023-05-01"
+---
+``` {r setup, include=FALSE}
+# clean environment
+rm(list=ls())
+cat("\014")
+
+# sets path to file
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+library(tidyverse)
+library(ggplot2)
+library(naivebayes)
+library(MASS)
+```
+
+``` {r, fish data cleaning}
+# load data frame
+fish_df <- read.csv2("fishcatch.csv")
+
+# remove unnecessary data
+
+fish_df <- fish_df[48:nrow(fish_df),]
+fish_df <- fish_df[,1:4]
+colnames(fish_df) <- c("Class", "Length1", "Length2", "Length3")
+
+# Replace every "?" with NA
+
+fish_df[fish_df == "?"] <- NA
+
+
+fish_df <- as.data.frame(apply(fish_df, 2, function(x) gsub(",", ".", x)))
+
+fish_df$Length1 <- as.numeric(fish_df$Length1)
+fish_df$Length2 <- as.numeric(fish_df$Length2)
+fish_df$Length3 <- as.numeric(fish_df$Length3)
+
+# counts fish classes
+fish_count <- fish_df %>%
+  group_by(Class) %>%
+  summarise(Count = n())
+
+```
+
+``` {r, visualitation}
+ggplot(fish_count, aes(x = Class, y = Count)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  theme_classic() +
+  labs(title = "Fish Count per Species",
+       x = "Species",
+       y = "Count")
+```
+``` {r, classification2}
+
+# Erstellen Sie das LDA-Modell
+model <- lda(Class ~ Length1 + Length2 + Length3, data = fish_df)
+
+
+# Testdatensatz erstellen (jeder 10. Fisch)
+test_data <- fish_df[seq(1, nrow(fish_df), by = 10), ]
+
+# Vorhersagen treffen
+predictions <- predict(model, test_data)
+
+# Die Ergebnisse anzeigen
+result2 <- data.frame(
+  True_Art = test_data$Class,
+  Predicted_Art = predictions$class
+)
+
+print(result2)
+
+```
+
+
+
+``` {r, classification2}
+# Create a list to store the separated dataframes
+separated_data <- list()
+
+# Split the dataframe by Species (Class) and store it in the list
+fish_df %>%
+  group_by(Class) %>%
+  group_split() %>%
+  { separated_data <<- set_names(., map_chr(., ~first(.x$Class))) }
+
+# transform list into numeric for calculations
+numeric_separated_data <- lapply(separated_data, function(df) {
+  data.frame(lapply(df, as.numeric), stringsAsFactors = FALSE)
+})
+
+# calculates the mean for every Speciess Lenght1, 2 and 3
+mean_list <- lapply(numeric_separated_data, function(df) {
+  colMeans(df, na.rm = TRUE)
+})
+
+# calculates the variance for every Speciess Lenght1, 2 and 3
+variance_list <- lapply(numeric_separated_data, function(df) {
+  sapply(df, var, na.rm = TRUE)
+})
+
+# Calculate the a priori probabilities for each fish species
+a_priori_prob <- fish_df %>%
+  group_by(Class) %>%
+  summarise(Count = n()) %>%
+  mutate(Probability = Count / sum(Count))
+
+```
+
+``` {r, accuracy}
+# calculates accuracy
+accuracy <- mean(result2$True_Art == result2$Predicted_Art)
+
+# shows accuracy in %
+accuracy_percent <- accuracy * 100
+cat("Accuracy:", accuracy_percent, "%\n")
+```
+
