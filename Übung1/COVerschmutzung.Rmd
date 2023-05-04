@@ -48,11 +48,10 @@ running_mean <- rollapply(NO_df$Oldenburg_VS, window_size, FUN = mean, na.rm = T
 # substitutes all missing values for the running mean
 NO_OL_df$`ug/m^3`[is.na(NO_OL_df$`ug/m^3`)] <- running_mean[is.na(NO_OL_df$`ug/m^3`)]
 
-ddsd
 ```
 
 
-```{r pressure, echo=FALSE}
+```{r pressure}
 
 ```
 
