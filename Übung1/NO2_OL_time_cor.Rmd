@@ -186,6 +186,7 @@ Dies könnte daran liegen, dass sich der Verkehr verändernt hat, oder regulatio
 für Luftquailität eingeführt worden sind, sowie an Veränderungen der Klima
 Bedingungen.
 
+
 ```{r plot}
 data_long <- time_cor_NO22_OL_df %>% 
   pivot_longer(cols = starts_with("c(NO22"),
