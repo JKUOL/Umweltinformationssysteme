@@ -1,0 +1,209 @@
+---
+title: "NO22 Oldenburg time correlation"
+output: html_document
+date: "2023-05-02"
+---
+
+``` {r setup, include=FALSE}
+# clean environment
+rm(list=ls())
+cat("\014")
+
+# sets path to file
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+library(tidyverse)
+library(ggplot2)
+library(zoo)
+library(scales)
+library(lubridate)
+```
+
+
+```{r, data cleaning}
+# load csv files
+NO2_df <- read.csv2("city_data/NO2.csv")
+NO2_hist_OL_df <- read.csv2("city_data_historic/Oldenburg_VS_181228_190328.csv")
+
+#creating df NO2 Oldenburg with current data
+NO2_OL_df <- data.frame(NO2_df$Datum,NO2_df$Uhrzeit,NO2_df$Oldenburg_VS)
+
+# changing col names
+colnames(NO2_OL_df) <- c("Datum", "Uhrzeit", "ug/m^3")
+
+# change col Datum to date format
+NO2_OL_df$Datum <- as.Date(NO2_OL_df$Datum, format = "%d.%m.%y")
+NO2_hist_OL_df$Datum <- as.Date(NO2_hist_OL_df$Datum, format = "%d.%m.%y")
+
+# calculates walking mean for NAs
+window_size <- 48  # number of elements used for walking mean
+running_mean <- rollapply(NO2_hist_OL_df$ug.m, window_size, FUN = mean, 
+                          na.rm = TRUE, partial = TRUE, align = "right")
+
+# substitutes all missing values for the running mean
+NO2_hist_OL_df$ug.m[is.na(NO2_hist_OL_df$ug.m)] <- running_mean[is.na(
+                                                          NO2_hist_OL_df$ug.m)]
+
+running_mean <- rollapply(NO2_df$Oldenburg_VS, window_size, FUN = mean, 
+                          na.rm = TRUE, partial = TRUE, align = "right")
+
+# substitutes all missing values for the running mean
+NO2_OL_df$`ug/m^3`[is.na(NO2_OL_df$`ug/m^3`)] <- running_mean[is.na(
+                                                            NO2_OL_df$`ug/m^3`)]
+
+# Create new columns with only day and month information
+NO2_OL_df$DayMonth <- format(NO2_OL_df$Datum, "%d-%m")
+NO2_hist_OL_df$DayMonth <- format(NO2_hist_OL_df$Datum, "%d-%m")
+
+# changes character to date
+NO2_OL_df$DayMonth <- as.Date(NO2_OL_df$DayMonth, format = "%d-%m")
+NO2_hist_OL_df$DayMonth <- as.Date(NO2_hist_OL_df$DayMonth, format = "%d-%m")
+
+# sets a start and end date for filter
+start_date <- as.Date("15-02", format = "%d-%m")
+end_date <- as.Date("15-03", format = "%d-%m")
+
+# takes only date between given start and end date
+NO2_OL_df <- NO2_OL_df %>%
+  filter(DayMonth >= start_date & DayMonth <= end_date)
+NO2_hist_OL_df <- NO2_hist_OL_df %>%
+   filter(DayMonth >= start_date & DayMonth <= end_date)
+
+# pastes the time into the date col
+NO2_OL_df$DayMonth <- paste(NO2_OL_df$DayMonth, NO2_OL_df$Uhrzeit)
+
+# creates df time correlation with current data and historic data 
+time_cor_NO22_OL_df <- data.frame(NO2_OL_df$DayMonth, NO2_hist_OL_df$ug.m, 
+                                 NO2_OL_df$`ug/m^3`)
+
+# changes col names for better accaccessibility
+colnames(time_cor_NO22_OL_df) <- c("Time","c(NO22) [ug/m^3] 2019",
+                                  "c(NO22) [ug/m^3] 2023")
+```
+
+
+
+```{r Normalization}
+# Normalize by subtracting the mean and dividing by the standard deviation
+nor1 <- (NO2_OL_df$`ug/m^3`-mean(NO2_OL_df$`ug/m^3`))/sd(NO2_OL_df$`ug/m^3`)
+nor2 <- (NO2_hist_OL_df$ug.m-mean(NO2_hist_OL_df$ug.m))/sd(NO2_hist_OL_df$ug.m)
+
+# Create a new data frame with the normalized data and the corresponding time
+nor <- data.frame(time_cor_NO22_OL_df$Time,nor1,nor2)
+colnames(nor) <- c("Time", "nor_NO2_Ol_2023", "nor_NO2_Ol_2019")
+
+# Transform into a long format data frame for easy plotting with ggplot2
+nor_long <- nor %>% 
+  pivot_longer(cols = starts_with("nor_NO2"),
+               names_to = "Type",
+               values_to = "Value")
+
+# Convert the 'Time' column to POSIXct format for proper handling of 
+# datetime data in ggplot2
+nor_long$Time <- as.POSIXct(nor_long$Time, format = "%Y-%m-%d %H:%M")
+
+# Plot the normalized data with ggplot2
+ggplot(nor_long, aes(x = Time, y = Value, color = Type, group = Type)) +
+  geom_line(linewidth = 1) +
+  scale_x_datetime(labels = date_format("%d-%m"), breaks = date_breaks("1 day")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Normalized Oldenburg Data",
+       x = "Time",
+       y = "Concentration",
+       color = "Data") +
+  scale_color_manual(values = c("nor_NO2_Ol_2023" = "red", "nor_NO2_Ol_2019" = "green"))
+```
+
+```{r correlation}
+# Pearson correlation coefficient function
+pearson_correlation <- function(x, y) {
+  n <- length(x)
+  
+  if (n != length(y)) {
+    stop("Length of x must be the same then y.")
+  }
+  
+  x_mean <- mean(x)
+  y_mean <- mean(y)
+  
+  num <- sum((x - x_mean) * (y - y_mean))
+  den <- sqrt(sum((x - x_mean)^2) * sum((y - y_mean)^2))
+  
+  correlation <- num / den
+  return(correlation)
+}
+
+# Another correlation coefficient function 
+# (it seems to be the same as the Pearson correlation coefficient)
+correlation_cof <- function(x, y) {
+  n <- length(x)
+  
+  if (n != length(y)) {
+    stop("Length of x must be the same then y.")
+  }
+  
+  x_mean <- mean(x)
+  y_mean <- mean(y)
+  
+  x_var <- var(x)
+  y_var <- var(y)
+  
+  num <- sum((x - x_mean) * (y - y_mean))
+  den <- x_var * y_var
+  
+  n_div <- 1/(n-1)
+  
+  correlation <- n_div * (num / den)
+  return(correlation)
+}
+
+p_cor <- pearson_correlation(nor1, nor2)
+
+cor_cof <- correlation_cof(nor1, nor2)
+
+print(p_cor)
+print(cor_cof)
+
+```
+
+
+Ja, eine schwache oder fehlende Korrelation zwischen den 
+Stickstoffdioxid-Konzentrationen in zwei verschiedenen Zeiträumen oder 
+Datensätzen könnte im Sinne der Aufgabenstellung 
+("Die Luft war nicht anders...") interpretiert werden. 
+Eine schwache Korrelation legt nahe, dass die Stickstoffdioxid-Konzentrationen 
+in einem Datensatz nicht eng mit denen im anderen Datensatz verknüpft sind.
+
+In diesem Zusammenhang könnte eine schwache Korrelation bedeuten, dass sich die 
+Luftqualität (in Bezug auf Stickstoffdioxid-Konzentrationen) im untersuchten 
+Zeitraum oder zwischen den beiden untersuchten Standorten unterschiedlich 
+entwickelt hat. Dies könnte darauf hindeuten, dass die Faktoren, die die 
+Stickstoffdioxid-Konzentrationen beeinflussen, sich verändert haben oder 
+zwischen den beiden Standorten unterschiedlich sind.
+
+This could be due to factors such as changes in traffic patterns, implementation 
+of new air quality regulations, or variations in weather conditions.
+
+```{r plot}
+data_long <- time_cor_NO22_OL_df %>% 
+  pivot_longer(cols = starts_with("c(NO22"),
+               names_to = "Type",
+               values_to = "Value")
+
+date_time <- as.POSIXct(data_long$Time, format = "%Y-%m-%d %H:%M")
+
+
+data_long$Time <- as.POSIXct(data_long$Time, format = "%Y-%m-%d %H:%M")
+
+ggplot(data_long, aes(x = Time, y = Value, color = Type)) +
+  geom_line(linewidth = 1) +
+  scale_x_datetime(labels = date_format("%d-%m"), breaks = date_breaks("1 day")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Time Series Plot of Two Concentrations",
+       x = "Time",
+       y = "Concentration",
+       color = "Concentration Type") +
+  scale_color_manual(values = c("c(NO22) [ug/m^3] 2019" = "red", "c(NO22) [ug/m^3] 2023" = "green"))
+```
