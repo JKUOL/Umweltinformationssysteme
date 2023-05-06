@@ -135,8 +135,7 @@ pearson_correlation <- function(x, y) {
   return(correlation)
 }
 
-# Another correlation coefficient function 
-# (it seems to be the same as the Pearson correlation coefficient)
+# correlation function (lecture)
 correlation_cof <- function(x, y) {
   n <- length(x)
   
