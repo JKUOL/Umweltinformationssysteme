@@ -16,6 +16,25 @@ editor_options:
 
 
 
+1. Aufbereitung der Daten:
+Wählen Sie einen Luftverschmutzungsparameter (PM10, CO, NOx, NO2), mit dem Sie die weiteren Untersuchungen durchführen.
+Bringen Sie die Daten jeweils in eine Form, die Ihnen die  Weiterverarbeitung ermöglicht.
+Eine Reihe mit vielen Datenlücken ist bspw. ungeeignet. In einem solchen Fall weichen Sie besser auf andere Reihen aus.
+
+# Daten
+
+Die aktuellen Daten, stammen von der Lufthygienische Überwachung Niedersachsen.
+Sie umfassen einmal den historischen Zeitraum von 28.12.2019-28.03.2019, sowie
+den aktuellen Zeitraum von 02.02.2023-02.05.2023.
+
+Zur Untersuchung der temporalen Korrelation, wurde der Zeitraum vom 15.02-15.03
+(2019 und 2023) der Oldenburger Daten gewählt, hierzu wurden die Datensätze 
+gefiltert und zusammengefügt. 
+
+Für die Betrachtung der räumlichen korrelation wurde neben Oldenburg, der Standort
+Braunschweig genutzt. 
+
+
 
 
 ```r
@@ -63,6 +82,15 @@ running_mean <- rollapply(NO2_BS_df$`ug/m^3`, window_size, FUN = mean,
 NO2_BS_df$`ug/m^3`[is.na(NO2_BS_df$`ug/m^3`)] <- running_mean[is.na(
                                                             NO2_BS_df$`ug/m^3`)]
 
+# creates df location correlation with current data Oldenburg, Braunschweig
+loc_cor_NO2_OL_df <- data.frame(NO2_df$Datum, NO2_OL_df$`ug/m^3`,
+                                NO2_BS_df$`ug/m^3`)
+                                 
+colnames(loc_cor_NO2_OL_df) <- c("Time","Oldenburg c(NO2) [ug/m^3]",
+                                  "Braunschweig c(NO2) [ug/m^3]")
+
+loc_cor_NO2_OL_df$Time <- paste(loc_cor_NO2_OL_df$Time, NO2_df$Uhrzeit)
+
 # creating data frames for linear regression
 NO2_OL_lin_reg_df <- NO2_OL_df$`ug/m^3`
 NO2_BS_lin_reg_df <- NO2_BS_df$`ug/m^3`
@@ -93,33 +121,13 @@ NO2_BS_df <- NO2_BS_df %>%
 NO2_OL_df$DayMonth <- paste(NO2_OL_df$DayMonth, NO2_OL_df$Uhrzeit)
 
 # creates df time correlation with current data and historic data 
-time_cor_NO22_OL_df <- data.frame(NO2_OL_df$DayMonth, NO2_hist_OL_df$ug.m, 
+time_cor_NO2_OL_df <- data.frame(NO2_OL_df$DayMonth, NO2_hist_OL_df$ug.m, 
                                  NO2_OL_df$`ug/m^3`)
-
-# creates df location correlation with current data Oldenburg, Braunschweig
-loc_cor_NO22_OL_df <- data.frame(NO2_OL_df$DayMonth, NO2_BS_df$`ug/m^3`, 
-                                 NO2_OL_df$`ug/m^3`)
-
 
 # changes col names for better accaccessibility
-colnames(time_cor_NO22_OL_df) <- c("Time","c(NO22) [ug/m^3] 2019",
-                                  "c(NO22) [ug/m^3] 2023")
-
-colnames(loc_cor_NO22_OL_df) <- c("Time","Oldenburg c(NO2) [ug/m^3]",
-                                  "Braunschweig c(NO22) [ug/m^3]")
-
-# data for linear regression
-
-lin_data <- data.frame(NO2_df$Datum,NO2_OL_lin_reg_df,
-                       NO2_BS_lin_reg_df)
-
-colnames(lin_data) <- c("Date and Time","Oldenburg c(NO2) [ug/m^3]",
-                        "Braunschweig c(NO2) [ug/m^3]")
-
-lin_data$`Date and Time` <- paste(lin_data$Date, NO2_OL_df$Uhrzeit)
+colnames(time_cor_NO2_OL_df) <- c("Time","c(NO2) [ug/m^3] 2019",
+                                  "c(NO2) [ug/m^3] 2023")
 ```
-
-
 
 
 ```r
@@ -128,7 +136,7 @@ nor_time_1 <- (NO2_OL_df$`ug/m^3`-mean(NO2_OL_df$`ug/m^3`))/sd(NO2_OL_df$`ug/m^3
 nor_time_2 <- (NO2_hist_OL_df$ug.m-mean(NO2_hist_OL_df$ug.m))/sd(NO2_hist_OL_df$ug.m)
 
 # Create a new data frame with the normalized data and the corresponding time
-nor <- data.frame(time_cor_NO22_OL_df$Time,nor_time_1,nor_time_2)
+nor <- data.frame(time_cor_NO2_OL_df$Time,nor_time_1,nor_time_2)
 colnames(nor) <- c("Time", "nor_NO2_Ol_2023", "nor_NO2_Ol_2019")
 
 # Transform into a long format data frame for easy plotting with ggplot2
@@ -160,15 +168,15 @@ ggplot(nor_long, aes(x = Time, y = Value, color = Type, group = Type)) +
 
 ```r
 # Normalize by subtracting the mean and dividing by the standard deviation
-nor_loc_1 <- (loc_cor_NO22_OL_df$`Oldenburg c(NO2) [ug/m^3]`
-              -mean(loc_cor_NO22_OL_df$`Oldenburg c(NO2) [ug/m^3]`
-                    ))/sd(loc_cor_NO22_OL_df$`Oldenburg c(NO2) [ug/m^3]`)
-nor_loc_2 <- (loc_cor_NO22_OL_df$`Braunschweig c(NO22) [ug/m^3]`
-              -mean(loc_cor_NO22_OL_df$`Braunschweig c(NO22) [ug/m^3]`
-                    ))/sd(loc_cor_NO22_OL_df$`Braunschweig c(NO22) [ug/m^3]`)
+nor_loc_1 <- (loc_cor_NO2_OL_df$`Oldenburg c(NO2) [ug/m^3]`
+              -mean(loc_cor_NO2_OL_df$`Oldenburg c(NO2) [ug/m^3]`
+                    ))/sd(loc_cor_NO2_OL_df$`Oldenburg c(NO2) [ug/m^3]`)
+nor_loc_2 <- (loc_cor_NO2_OL_df$`Braunschweig c(NO2) [ug/m^3]`
+              -mean(loc_cor_NO2_OL_df$`Braunschweig c(NO2) [ug/m^3]`
+                    ))/sd(loc_cor_NO2_OL_df$`Braunschweig c(NO2) [ug/m^3]`)
 
 # Create a new data frame with the normalized data and the corresponding time
-nor_loc <- data.frame(loc_cor_NO22_OL_df$Time,nor_loc_1,nor_loc_2)
+nor_loc <- data.frame(loc_cor_NO2_OL_df$Time,nor_loc_1,nor_loc_2)
 colnames(nor_loc) <- c("Time", "nor_NO2_Ol", "nor_NO2_BS")
 
 # Transform into a long format data frame for easy plotting with ggplot2
@@ -179,12 +187,13 @@ nor_loc_long <- nor_loc %>%
 
 # Convert the 'Time' column to POSIXct format for proper handling of 
 # datetime data in ggplot2
-nor_loc_long$Time <- as.POSIXct(nor_loc_long$Time, format = "%Y-%m-%d %H:%M")
+
+nor_loc_long$Time <- as.POSIXct(nor_loc_long$Time, format = "%d.%m.%y %H:%M")
 
 # Plot the normalized data with ggplot2
 ggplot(nor_loc_long, aes(x = Time, y = Value, color = Type, group = Type)) +
   geom_line(linewidth = 1) +
-  scale_x_datetime(labels = date_format("%d-%m"), breaks = date_breaks("1 day")) +
+  scale_x_datetime(labels = date_format("%Y.%m.%d %H:%M"), breaks = date_breaks("2 week")) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(title = "Normalized Oldenburg and Braunschweig Data",
@@ -251,7 +260,7 @@ print(p_cor_loc)
 ```
 
 ```
-## [1] 0.6461164
+## [1] 0.6315112
 ```
 
 ```r
@@ -259,7 +268,7 @@ print(cor_cof_loc)
 ```
 
 ```
-## [1] 0.6461164
+## [1] 0.6315112
 ```
 Ja, eine schwache oder fehlende Korrelation zwischen den 
 Stickstoffdioxid-Konzentrationen in zwei verschiedenen Zeiträumen oder 
@@ -285,8 +294,8 @@ Bedingungen.
 
 ```r
 # Lineare Regression durchführen
-linear_model <- lm(lin_data$`Oldenburg c(NO2) [ug/m^3]`
-                   ~ lin_data$`Braunschweig c(NO2) [ug/m^3]`)
+linear_model <- lm(loc_cor_NO2_OL_df$`Oldenburg c(NO2) [ug/m^3]`
+                   ~ loc_cor_NO2_OL_df$`Braunschweig c(NO2) [ug/m^3]`)
 
 # Ergebnisse des Regressionsmodells anzeigen
 summary(linear_model)
@@ -295,19 +304,20 @@ summary(linear_model)
 ```
 ## 
 ## Call:
-## lm(formula = lin_data$`Oldenburg c(NO2) [ug/m^3]` ~ lin_data$`Braunschweig c(NO2) [ug/m^3]`)
+## lm(formula = loc_cor_NO2_OL_df$`Oldenburg c(NO2) [ug/m^3]` ~ 
+##     loc_cor_NO2_OL_df$`Braunschweig c(NO2) [ug/m^3]`)
 ## 
 ## Residuals:
 ##     Min      1Q  Median      3Q     Max 
 ## -35.476  -7.244  -0.993   6.099  43.458 
 ## 
 ## Coefficients:
-##                                         Estimate Std. Error t value Pr(>|t|)
-## (Intercept)                             13.84718    0.48469   28.57   <2e-16
-## lin_data$`Braunschweig c(NO2) [ug/m^3]`  0.67907    0.01804   37.64   <2e-16
-##                                            
-## (Intercept)                             ***
-## lin_data$`Braunschweig c(NO2) [ug/m^3]` ***
+##                                                  Estimate Std. Error t value
+## (Intercept)                                      13.84718    0.48469   28.57
+## loc_cor_NO2_OL_df$`Braunschweig c(NO2) [ug/m^3]`  0.67907    0.01804   37.64
+##                                                  Pr(>|t|)    
+## (Intercept)                                        <2e-16 ***
+## loc_cor_NO2_OL_df$`Braunschweig c(NO2) [ug/m^3]`   <2e-16 ***
 ## ---
 ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 ## 
@@ -317,8 +327,8 @@ summary(linear_model)
 ```
 
 ```r
-data <- data.frame(Oldenburg = lin_data$`Oldenburg c(NO2) [ug/m^3]`
-                   , Braunschweig = lin_data$`Braunschweig c(NO2) [ug/m^3]`)
+data <- data.frame(Oldenburg = loc_cor_NO2_OL_df$`Oldenburg c(NO2) [ug/m^3]`
+                   , Braunschweig = loc_cor_NO2_OL_df$`Braunschweig c(NO2) [ug/m^3]`)
 
 plot <- ggplot(data, aes(x = Braunschweig, y = Oldenburg)) +
   geom_point() +
