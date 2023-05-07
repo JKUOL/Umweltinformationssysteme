@@ -29,7 +29,19 @@ library(scales)
 library(lubridate)
 ```
 
+1. Aufbereitung der Daten:
+Wählen Sie einen Luftverschmutzungsparameter (PM10, CO, NOx, NO2), mit dem Sie die weiteren Untersuchungen durchführen.
+Bringen Sie die Daten jeweils in eine Form, die Ihnen die  Weiterverarbeitung ermöglicht.
+Eine Reihe mit vielen Datenlücken ist bspw. ungeeignet. In einem solchen Fall weichen Sie besser auf andere Reihen aus.
 
+# Datenaufbereitung
+
+Zunächst werden die Daten in verschiedenen Dataframes für die weitere Nutzung 
+zusammengefasst. Der Dataframe, zur Untersuchung der temporalen korrelation,
+besteht aus den Stickstoffdioxiddaten des Zeitraums zwischen dem 15.02 und 15.03 
+der Jahre 2019 und 2023.
+
+klsadklhjaskld
 ```{r, data cleaning}
 # load csv files
 NO2_df <- read.csv2("city_data/NO2.csv")
@@ -105,20 +117,20 @@ NO2_BS_df <- NO2_BS_df %>%
 NO2_OL_df$DayMonth <- paste(NO2_OL_df$DayMonth, NO2_OL_df$Uhrzeit)
 
 # creates df time correlation with current data and historic data 
-time_cor_NO22_OL_df <- data.frame(NO2_OL_df$DayMonth, NO2_hist_OL_df$ug.m, 
+time_cor_NO2_OL_df <- data.frame(NO2_OL_df$DayMonth, NO2_hist_OL_df$ug.m, 
                                  NO2_OL_df$`ug/m^3`)
 
 # creates df location correlation with current data Oldenburg, Braunschweig
-loc_cor_NO22_OL_df <- data.frame(NO2_OL_df$DayMonth, NO2_BS_df$`ug/m^3`, 
+loc_cor_NO2_OL_df <- data.frame(NO2_OL_df$DayMonth, NO2_BS_df$`ug/m^3`, 
                                  NO2_OL_df$`ug/m^3`)
 
 
 # changes col names for better accaccessibility
-colnames(time_cor_NO22_OL_df) <- c("Time","c(NO22) [ug/m^3] 2019",
-                                  "c(NO22) [ug/m^3] 2023")
+colnames(time_cor_NO2_OL_df) <- c("Time","c(NO2) [ug/m^3] 2019",
+                                  "c(NO2) [ug/m^3] 2023")
 
-colnames(loc_cor_NO22_OL_df) <- c("Time","Oldenburg c(NO2) [ug/m^3]",
-                                  "Braunschweig c(NO22) [ug/m^3]")
+colnames(loc_cor_NO2_OL_df) <- c("Time","Oldenburg c(NO2) [ug/m^3]",
+                                  "Braunschweig c(NO2) [ug/m^3]")
 
 # data for linear regression
 
@@ -141,7 +153,7 @@ nor_time_1 <- (NO2_OL_df$`ug/m^3`-mean(NO2_OL_df$`ug/m^3`))/sd(NO2_OL_df$`ug/m^3
 nor_time_2 <- (NO2_hist_OL_df$ug.m-mean(NO2_hist_OL_df$ug.m))/sd(NO2_hist_OL_df$ug.m)
 
 # Create a new data frame with the normalized data and the corresponding time
-nor <- data.frame(time_cor_NO22_OL_df$Time,nor_time_1,nor_time_2)
+nor <- data.frame(time_cor_NO2_OL_df$Time,nor_time_1,nor_time_2)
 colnames(nor) <- c("Time", "nor_NO2_Ol_2023", "nor_NO2_Ol_2019")
 
 # Transform into a long format data frame for easy plotting with ggplot2
@@ -170,15 +182,15 @@ ggplot(nor_long, aes(x = Time, y = Value, color = Type, group = Type)) +
 
 ```{r Normalization location correlation data}
 # Normalize by subtracting the mean and dividing by the standard deviation
-nor_loc_1 <- (loc_cor_NO22_OL_df$`Oldenburg c(NO2) [ug/m^3]`
-              -mean(loc_cor_NO22_OL_df$`Oldenburg c(NO2) [ug/m^3]`
-                    ))/sd(loc_cor_NO22_OL_df$`Oldenburg c(NO2) [ug/m^3]`)
-nor_loc_2 <- (loc_cor_NO22_OL_df$`Braunschweig c(NO22) [ug/m^3]`
-              -mean(loc_cor_NO22_OL_df$`Braunschweig c(NO22) [ug/m^3]`
-                    ))/sd(loc_cor_NO22_OL_df$`Braunschweig c(NO22) [ug/m^3]`)
+nor_loc_1 <- (loc_cor_NO2_OL_df$`Oldenburg c(NO2) [ug/m^3]`
+              -mean(loc_cor_NO2_OL_df$`Oldenburg c(NO2) [ug/m^3]`
+                    ))/sd(loc_cor_NO2_OL_df$`Oldenburg c(NO2) [ug/m^3]`)
+nor_loc_2 <- (loc_cor_NO2_OL_df$`Braunschweig c(NO2) [ug/m^3]`
+              -mean(loc_cor_NO2_OL_df$`Braunschweig c(NO2) [ug/m^3]`
+                    ))/sd(loc_cor_NO2_OL_df$`Braunschweig c(NO2) [ug/m^3]`)
 
 # Create a new data frame with the normalized data and the corresponding time
-nor_loc <- data.frame(loc_cor_NO22_OL_df$Time,nor_loc_1,nor_loc_2)
+nor_loc <- data.frame(loc_cor_NO2_OL_df$Time,nor_loc_1,nor_loc_2)
 colnames(nor_loc) <- c("Time", "nor_NO2_Ol", "nor_NO2_BS")
 
 # Transform into a long format data frame for easy plotting with ggplot2
