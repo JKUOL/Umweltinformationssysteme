@@ -14,23 +14,11 @@ editor_options:
     wrap: 72
 ---
 
-``` {r setup, include=FALSE}
-# clean environment
-rm(list=ls())
-cat("\014")
-
-# sets path to file
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
-
-library(tidyverse)
-library(ggplot2)
-library(zoo)
-library(scales)
-library(lubridate)
-```
 
 
-```{r, data cleaning}
+
+
+```r
 # load csv files
 NO2_df <- read.csv2("city_data/NO2.csv")
 NO2_hist_OL_df <- read.csv2("city_data_historic/Oldenburg_VS_181228_190328.csv")
@@ -115,12 +103,12 @@ colnames(time_cor_NO22_OL_df) <- c("Time","c(NO22) [ug/m^3] 2019",
 
 colnames(loc_cor_NO22_OL_df) <- c("Time","Oldenburg c(NO2) [ug/m^3]",
                                   "Braunschweig c(NO22) [ug/m^3]")
-
 ```
 
 
 
-```{r Normalization time correlation data}
+
+```r
 # Normalize by subtracting the mean and dividing by the standard deviation
 nor_time_1 <- (NO2_OL_df$`ug/m^3`-mean(NO2_OL_df$`ug/m^3`))/sd(NO2_OL_df$`ug/m^3`)
 nor_time_2 <- (NO2_hist_OL_df$ug.m-mean(NO2_hist_OL_df$ug.m))/sd(NO2_hist_OL_df$ug.m)
@@ -152,7 +140,10 @@ ggplot(nor_long, aes(x = Time, y = Value, color = Type, group = Type)) +
   scale_color_manual(values = c("nor_NO2_Ol_2023" = "red", 
                                 "nor_NO2_Ol_2019" = "green"))
 ```
-```{r Normalization location correlation data}
+
+![](NO2_OL_time_cor_files/figure-html/Normalization time correlation data-1.png)<!-- -->
+
+```r
 # Normalize by subtracting the mean and dividing by the standard deviation
 nor_loc_1 <- (loc_cor_NO22_OL_df$`Oldenburg c(NO2) [ug/m^3]`
               -mean(loc_cor_NO22_OL_df$`Oldenburg c(NO2) [ug/m^3]`
@@ -189,7 +180,10 @@ ggplot(nor_loc_long, aes(x = Time, y = Value, color = Type, group = Type)) +
                                 "nor_NO2_BS" = "green"))
 ```
 
-```{r correlation function}
+![](NO2_OL_time_cor_files/figure-html/Normalization location correlation data-1.png)<!-- -->
+
+
+```r
 # correlation function (lecture)
 correlation_cof <- function(x, y) {
   n <- length(x)
@@ -214,8 +208,8 @@ correlation_cof <- function(x, y) {
 }
 ```
 
-```{r correlation}
 
+```r
 cor_cof_time <- correlation_cof(nor_time_1, nor_time_2)
 cor_cof_loc <- correlation_cof(nor_loc_1, nor_loc_2)
 
@@ -223,10 +217,34 @@ p_cor_time <- cor(nor_time_1, nor_time_2)
 p_cor_loc <- cor(nor_loc_1, nor_loc_2)
 
 print(p_cor_time)
-print(cor_cof_time)
-print(p_cor_loc)
-print(cor_cof_loc)
+```
 
+```
+## [1] 0.1625908
+```
+
+```r
+print(cor_cof_time)
+```
+
+```
+## [1] 0.1625908
+```
+
+```r
+print(p_cor_loc)
+```
+
+```
+## [1] 0.6461164
+```
+
+```r
+print(cor_cof_loc)
+```
+
+```
+## [1] 0.6461164
 ```
 Ja, eine schwache oder fehlende Korrelation zwischen den 
 Stickstoffdioxid-Konzentrationen in zwei verschiedenen Zeiträumen oder 
@@ -249,7 +267,8 @@ Bedingungen.
 
 
 
-```{r plot}
+
+```r
 data_long <- time_cor_NO22_OL_df %>% 
   pivot_longer(cols = starts_with("c(NO22"),
                names_to = "Type",
@@ -273,3 +292,5 @@ ggplot(data_long, aes(x = Time, y = Value, color = Type)) +
   scale_color_manual(values = c("c(NO22) [ug/m^3] 2019" = "red", 
                                 "c(NO22) [ug/m^3] 2023" = "green"))
 ```
+
+![](NO2_OL_time_cor_files/figure-html/plot-1.png)<!-- -->
