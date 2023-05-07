@@ -286,4 +286,5 @@ plot <- ggplot(data, aes(x = Braunschweig, y = Oldenburg)) +
 # Plot anzeigen
 print(plot)
 ```
+
 R-quadarat Wert von 0.3988

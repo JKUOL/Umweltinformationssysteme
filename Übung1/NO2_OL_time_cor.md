@@ -63,6 +63,10 @@ running_mean <- rollapply(NO2_BS_df$`ug/m^3`, window_size, FUN = mean,
 NO2_BS_df$`ug/m^3`[is.na(NO2_BS_df$`ug/m^3`)] <- running_mean[is.na(
                                                             NO2_BS_df$`ug/m^3`)]
 
+# creating data frames for linear regression
+NO2_OL_lin_reg_df <- NO2_OL_df$`ug/m^3`
+NO2_BS_lin_reg_df <- NO2_BS_df$`ug/m^3`
+
 # Create new columns with only day and month information
 NO2_OL_df$DayMonth <- format(NO2_OL_df$Datum, "%d-%m")
 NO2_hist_OL_df$DayMonth <- format(NO2_hist_OL_df$Datum, "%d-%m")
@@ -103,6 +107,16 @@ colnames(time_cor_NO22_OL_df) <- c("Time","c(NO22) [ug/m^3] 2019",
 
 colnames(loc_cor_NO22_OL_df) <- c("Time","Oldenburg c(NO2) [ug/m^3]",
                                   "Braunschweig c(NO22) [ug/m^3]")
+
+# data for linear regression
+
+lin_data <- data.frame(NO2_df$Datum,NO2_OL_lin_reg_df,
+                       NO2_BS_lin_reg_df)
+
+colnames(lin_data) <- c("Date and Time","Oldenburg c(NO2) [ug/m^3]",
+                        "Braunschweig c(NO2) [ug/m^3]")
+
+lin_data$`Date and Time` <- paste(lin_data$Date, NO2_OL_df$Uhrzeit)
 ```
 
 
@@ -142,6 +156,7 @@ ggplot(nor_long, aes(x = Time, y = Value, color = Type, group = Type)) +
 ```
 
 ![](NO2_OL_time_cor_files/figure-html/Normalization time correlation data-1.png)<!-- -->
+
 
 ```r
 # Normalize by subtracting the mean and dividing by the standard deviation
@@ -269,28 +284,56 @@ Bedingungen.
 
 
 ```r
-data_long <- time_cor_NO22_OL_df %>% 
-  pivot_longer(cols = starts_with("c(NO22"),
-               names_to = "Type",
-               values_to = "Value")
+# Lineare Regression durchführen
+linear_model <- lm(lin_data$`Oldenburg c(NO2) [ug/m^3]`
+                   ~ lin_data$`Braunschweig c(NO2) [ug/m^3]`)
 
-date_time <- as.POSIXct(data_long$Time, format = "%Y-%m-%d %H:%M")
-
-
-data_long$Time <- as.POSIXct(data_long$Time, format = "%Y-%m-%d %H:%M")
-
-ggplot(data_long, aes(x = Time, y = Value, color = Type)) +
-  geom_line(linewidth = 1) +
-  scale_x_datetime(labels = date_format("%d-%m"), 
-                   breaks = date_breaks("1 day")) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(title = "Time Series Plot of Two Concentrations",
-       x = "Time",
-       y = "Concentration",
-       color = "Concentration Type") +
-  scale_color_manual(values = c("c(NO22) [ug/m^3] 2019" = "red", 
-                                "c(NO22) [ug/m^3] 2023" = "green"))
+# Ergebnisse des Regressionsmodells anzeigen
+summary(linear_model)
 ```
 
-![](NO2_OL_time_cor_files/figure-html/plot-1.png)<!-- -->
+```
+## 
+## Call:
+## lm(formula = lin_data$`Oldenburg c(NO2) [ug/m^3]` ~ lin_data$`Braunschweig c(NO2) [ug/m^3]`)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -35.476  -7.244  -0.993   6.099  43.458 
+## 
+## Coefficients:
+##                                         Estimate Std. Error t value Pr(>|t|)
+## (Intercept)                             13.84718    0.48469   28.57   <2e-16
+## lin_data$`Braunschweig c(NO2) [ug/m^3]`  0.67907    0.01804   37.64   <2e-16
+##                                            
+## (Intercept)                             ***
+## lin_data$`Braunschweig c(NO2) [ug/m^3]` ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 10.36 on 2136 degrees of freedom
+## Multiple R-squared:  0.3988,	Adjusted R-squared:  0.3985 
+## F-statistic:  1417 on 1 and 2136 DF,  p-value: < 2.2e-16
+```
+
+```r
+data <- data.frame(Oldenburg = lin_data$`Oldenburg c(NO2) [ug/m^3]`
+                   , Braunschweig = lin_data$`Braunschweig c(NO2) [ug/m^3]`)
+
+plot <- ggplot(data, aes(x = Braunschweig, y = Oldenburg)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  theme_minimal() +
+  labs(x = "Braunschweig", y = "Oldenburg", title = "Lineare Regression von NO2-Konzentrationen")
+
+# Plot anzeigen
+print(plot)
+```
+
+```
+## `geom_smooth()` using formula = 'y ~ x'
+```
+
+![](NO2_OL_time_cor_files/figure-html/linear regression-1.png)<!-- -->
+
+R-quadarat Wert von 0.3988
