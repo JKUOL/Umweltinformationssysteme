@@ -28,24 +28,11 @@ library(zoo)
 library(scales)
 library(lubridate)
 ```
-
-1. Aufbereitung der Daten:
-Wählen Sie einen Luftverschmutzungsparameter (PM10, CO, NOx, NO2), mit dem Sie die weiteren Untersuchungen durchführen.
-Bringen Sie die Daten jeweils in eine Form, die Ihnen die  Weiterverarbeitung ermöglicht.
-Eine Reihe mit vielen Datenlücken ist bspw. ungeeignet. In einem solchen Fall weichen Sie besser auf andere Reihen aus.
-
 # Daten
 
-Die aktuellen Daten, stammen von der Lufthygienische Überwachung Niedersachsen.
-Sie umfassen einmal den historischen Zeitraum von 28.12.2019-28.03.2019, sowie
-den aktuellen Zeitraum von 02.02.2023-02.05.2023.
+Die vorliegenden Daten stammen aus der lufthygienischen Überwachung Niedersachsens und umfassen zwei Zeiträume: den historischen Zeitraum vom 28.12.2019 bis zum 28.03.2019 sowie den aktuellen Zeitraum vom 02.02.2023 bis zum 02.05.2023. Um die zeitliche Korrelation zu untersuchen, wurde der Zeitraum vom 15.02. bis zum 15.03. (sowohl 2019 als auch 2023) aus den Oldenburger Daten ausgewählt. Dazu wurden die Datensätze gefiltert und zusammengeführt.
 
-Zur Untersuchung der temporalen Korrelation, wurde der Zeitraum vom 15.02-15.03
-(2019 und 2023) der Oldenburger Daten gewählt, hierzu wurden die Datensätze 
-gefiltert und zusammengefügt. 
-
-Für die Betrachtung der räumlichen korrelation wurde neben Oldenburg, der Standort
-Braunschweig genutzt. 
+Für die Analyse der räumlichen Korrelation wurden neben Oldenburg auch Daten vom Standort Braunschweig herangezogen. Um fehlende Werte in den Datenreihen zu ersetzen, wurde der gleitende Mittelwert verwendet. Dabei wurde ein Fenster von 48 Datenpunkten zur Berechnung des Durchschnitts herangezogen, um eine geglättete Version der ursprünglichen Daten zu erhalten.
 
 
 
