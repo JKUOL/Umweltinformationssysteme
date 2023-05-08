@@ -1,6 +1,6 @@
 ---
 title: "2. Fish Classifier"
-author: "Justin König"
+author: "Gruppe 23 Justin König, Ali Abdullah, Rita Tagoula Ngoufo"
 date: "08.05.2023"
 output:
   html_document:
@@ -33,6 +33,9 @@ library(mvtnorm)
 library(caret)
 ```
 
+# Daten
+
+Es wurde ein Datensatz verwendet, welcher aus Länge1, Länge2, Länge3, Höhe, Breite, Geschlecht, sowie dem Gewicht von 7 unterschiedlichen Fischarten besteht. Aus Länge1, Länge2, Länge3, Höhe und breite, sollte ein Classifier erstellt werden, welcher die Fischspezies aus einem Testdatensatz, bestehend aus jeder 10ten Reihe des Hauptdatensatzes, vorhersagen sollte.
 
 ```{r, data cleaning}
 # load data frame
@@ -65,7 +68,7 @@ train_data <- fish_df[!(seq_len(nrow(fish_df)) %% 10 == 0), ]
 # test df (every 10. Fish)
 test_data <- fish_df[seq(1, nrow(fish_df), by = 10), ]
 ```
-
+Im folgenden Diagramm ist die Anzahl der jeweiligen Fischspezies im Datensatz dargstellt.
 ``` {r, visualitation}
 ggplot(fish_count, aes(x = Species, y = Count)) +
   geom_bar(stat = "identity", fill = "steelblue") +
@@ -76,43 +79,45 @@ ggplot(fish_count, aes(x = Species, y = Count)) +
 ```
 
 
-
+Die Normalverteilungsparameter sind in folgender Tabelle zusammengefasst.
 ``` {r, summary}
 
-# Get the list of unique species
-unique_species <- unique(fish_df$Species)
+# group by species
+grouped_fish <- fish_df %>%
+  group_by(Species)
 
-# Calculate the mean for each parameter for each species
-mean_species_list <- lapply(unique_species, function(fish_species) {
-  mean_species <- fish_df %>%
-    filter(Species == fish_species) %>%
-    summarise(Mean_Length1 = mean(Length1, na.rm = TRUE),
-              Mean_Length2 = mean(Length2, na.rm = TRUE),
-              Mean_Length3 = mean(Length3, na.rm = TRUE),
-              Mean_Height = mean(Height, na.rm = TRUE),
-              Mean_Width = mean(Width, na.rm = TRUE),
-              Mean_Weight = mean(Weight, na.rm = TRUE))
-  mean_species
-})
+# calculates mean and standarddeviation
+normal_params <- grouped_fish %>%
+  summarise(
+    Mean_Length1 = mean(Length1, na.rm = TRUE),
+    Mean_Length2 = mean(Length2, na.rm = TRUE),
+    Mean_Length3 = mean(Length3, na.rm = TRUE),
+    Mean_Height = mean(Height, na.rm = TRUE),
+    Mean_Width = mean(Width, na.rm = TRUE),
+    Mean_Weight = mean(Weight, na.rm = TRUE),
+    SD_Length1 = sd(Length1, na.rm = TRUE),
+    SD_Length2 = sd(Length2, na.rm = TRUE),
+    SD_Length3 = sd(Length3, na.rm = TRUE),
+    SD_Height = sd(Height, na.rm = TRUE),
+    SD_Width = sd(Width, na.rm = TRUE),
+    SD_Weight = sd(Weight, na.rm = TRUE)
+  )
 
-# Assign names to the list elements based on species
-names(mean_species_list) <- unique_species
-
-# Print the mean values for each species
-mean_species_list
-
+print(normal_params)
 ```
 
+# Klassifikator
+
+Zuerst werden die einzigartigen Fischarten aus den Trainingsdaten extrahiert und für jede Fischart werden die Mittelwerte, die Kovarianzmatrix und die a-priori Wahrscheinlichkeiten berechnet.
+
+Die multi_gau Funktion berechnet die Dichte der multivariaten Gaußverteilung für einen gegebenen Datenpunkt x und die Verteilungsparameter (Mittelwert und Kovarianzmatrix).
+
+Die classify_fish_qda Funktion klassifiziert einen Fisch basierend auf der Maximum-Likelihood-Methode. Dazu wird für jeden Datenpunkt die bedingte Wahrscheinlichkeit für jede Fischart berechnet und mit der a-priori Wahrscheinlichkeit multipliziert. Die Fischart mit der höchsten resultierenden Wahrscheinlichkeit wird als die vorhergesagte Spezies ausgewählt.
+
+Schließlich wird der QDA-Klassifikator auf dem Testdatensatz angewendet und die Genauigkeit berechnet, indem die Anzahl der korrekt vorhergesagten Spezies durch die Gesamtanzahl der Vorhersagen geteilt wird.
+
+
 ```{r, classifieing}
-# Load the data
-df <- fish_df
-
-# Split the data into training and testing sets
-set.seed(42)
-split_index <- sample(1:nrow(fish_df), 0.7 * nrow(fish_df))
-train_data <- fish_df[split_index, ]
-test_data <- fish_df[-split_index, ]
-
 # Calculate the mean, covariance, and a-priori probability for each fish species
 species_list <- unique(train_data$Species)
 stats_list <- lapply(species_list, function(species) {
@@ -127,7 +132,7 @@ stats_list <- lapply(species_list, function(species) {
 names(stats_list) <- species_list
 
 # Multivariate Gaussian density function
-multivariate_gaussian <- function(x, mean, cov) {
+multi_gau <- function(x, mean, cov) {
   k <- length(mean)
   exp(-0.5 * t(x - mean) %*% solve(cov, x - mean)) / sqrt((2 * pi)^k * det(cov))
 }
@@ -135,7 +140,7 @@ multivariate_gaussian <- function(x, mean, cov) {
 # QDA classifier
 classify_fish_qda <- function(lengths) {
   likelihoods <- sapply(stats_list, function(params) {
-    likelihood <- multivariate_gaussian(lengths, params$mean, params$cov)
+    likelihood <- multi_gau(lengths, params$mean, params$cov)
     likelihood * params$prior
   })
   
@@ -145,14 +150,15 @@ classify_fish_qda <- function(lengths) {
 # Classify each fish in the test set
 predicted_species <- apply(test_data[, c("Length1", "Length2", "Length3", "Height", "Width")], 1, classify_fish_qda)
 
-# Calculate the accuracy
+# Calculate accuracy
 correct_predictions <- sum(predicted_species == test_data$Species)
 total_predictions <- length(predicted_species)
 
 accuracy <- correct_predictions / total_predictions
-cat("The accuracy of the QDA classifier on the test set is:", accuracy * 100, "%\n")
-
 ```
+Die Genauigkeit des Klassifikators beträgt 100%.
+
+Im folgenden sind Diagramme dargestellt, welche die abhängigkeiten der einzelnen Variablen untereinander darstellen.
 ```{r, plotting }
 
 # Create a long-format data frame
@@ -219,44 +225,9 @@ ggplot(long_fish_5_df, aes(x = Width, y = Value, color = factor(Species))) +
   ggtitle("Scatter plots of Width vs. other features")
 ```
 
-```{r, Boxplots}
-# Create a box plot
-ggplot(train_data, aes(x = Species, y = Length1, fill = Species)) +
-  geom_boxplot() +
-  labs(x = "Species", y = "Length1") +
-  theme_minimal() +
-  ggtitle("Box plot of Length1 by fish species")
 
+# Quellen
 
-# Create a box plot
-ggplot(train_data, aes(x = Species, y = Length2, fill = Species)) +
-  geom_boxplot() +
-  labs(x = "Species", y = "Length2") +
-  theme_minimal() +
-  ggtitle("Box plot of Length2 by fish species")
+https://www.datascienceblog.net/post/machine-learning/linear-discriminant-analysis/#:~:text=Linear%20discriminant%20analysis%20(LDA)%20is,non%2Dlinear%20separation%20of%20data.
 
-
-# Create a box plot
-ggplot(train_data, aes(x = Species, y = Length3, fill = Species)) +
-  geom_boxplot() +
-  labs(x = "Species", y = "Length3") +
-  theme_minimal() +
-  ggtitle("Box plot of Length3 by fish species")
-
-
-# Create a box plot
-ggplot(train_data, aes(x = Species, y = Height, fill = Species)) +
-  geom_boxplot() +
-  labs(x = "Species", y = "Height") +
-  theme_minimal() +
-  ggtitle("Box plot of Height by fish species")
-
-
-# Create a box plot
-ggplot(train_data, aes(x = Species, y = Width, fill = Species)) +
-  geom_boxplot() +
-  labs(x = "Species", y = "Width") +
-  theme_minimal() +
-  ggtitle("Box plot of Width by fish species")
-
-```
+https://towardsdatascience.com/quadratic-discriminant-analysis-ae55d8a8148a

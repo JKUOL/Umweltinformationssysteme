@@ -1,6 +1,6 @@
 ---
 title: "1. Korrelation und Regressionskoeffizient"
-author: "Justin König"
+author: "Gruppe 23 Justin König, Ali Abdullah, Rita Tagoula Ngoufo"
 date: "08.05.2023"
 output:
   html_document:
@@ -127,7 +127,7 @@ time_cor_NO2_OL_df <- data.frame(NO2_OL_df$DayMonth, NO2_hist_OL_df$ug.m,
 colnames(time_cor_NO2_OL_df) <- c("Time","c(NO2) [ug/m^3] 2019",
                                   "c(NO2) [ug/m^3] 2023")
 ```
-
+# Normalisierung
 Die Daten zur Untersuchung der temporalen und lokalen korrelation wurden normalisiert und sind im 
 folgenden graphisch Dargestellt.
 
@@ -135,8 +135,6 @@ Zur normalisierung wurde folgende Formel verwendet:
 $$
 nor_x = \frac{X_i- µ_x}{\sigma_x}
 $$
-
-
 ```{r Normalization time correlation data}
 # Normalize by subtracting the mean and dividing by the standard deviation
 nor_time_1 <- (NO2_OL_df$`ug/m^3`-mean(NO2_OL_df$`ug/m^3`))/sd(NO2_OL_df$`ug/m^3`)
@@ -189,7 +187,7 @@ nor_loc_long <- nor_loc %>%
                names_to = "Type",
                values_to = "Value")
 
-# Convert the 'Time' column to POSIXct format for proper handling of 
+# Convert the Time column to POSIXct format for proper handling of 
 # datetime data in ggplot2
 
 nor_loc_long$Time <- as.POSIXct(nor_loc_long$Time, format = "%d.%m.%y %H:%M")
@@ -207,9 +205,12 @@ ggplot(nor_loc_long, aes(x = Time, y = Value, color = Type, group = Type)) +
   scale_color_manual(values = c("nor_NO2_Ol" = "red", 
                                 "nor_NO2_BS" = "green"))
 ```
-The quadratic formula is:
+
+# Korrelation
+
+Zur bestimmung der Güte der Näherung wurde der Korrelationskoeffizient $r_{XY}$ sowhol für die temporalen als auch die lokalen Daten bestimmt. Dies geschah mit folgende Formel: 
 $$
-x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+r_{XY} = \frac{1}{N-1} \sum_{i=1}^N \frac{X_i- µ_x}{\sigma_x} \cdot \frac{Y_i- µ_Y}{\sigma_Y}
 $$
 ```{r correlation function}
 # correlation function (lecture)
@@ -236,48 +237,44 @@ correlation_cof <- function(x, y) {
 }
 ```
 
-```{r correlation}
 
+```{r correlation}
 cor_cof_time <- correlation_cof(nor_time_1, nor_time_2)
 cor_cof_loc <- correlation_cof(nor_loc_1, nor_loc_2)
-
-p_cor_time <- cor(nor_time_1, nor_time_2)
-p_cor_loc <- cor(nor_loc_1, nor_loc_2)
-
-print(p_cor_time)
-print(cor_cof_time)
-print(p_cor_loc)
-print(cor_cof_loc)
-
 ```
-Ja, eine schwache oder fehlende Korrelation zwischen den 
-Stickstoffdioxid-Konzentrationen in zwei verschiedenen Zeiträumen oder 
-Datensätzen könnte im Sinne der Aufgabenstellung 
-("Die Luft war nicht anders...") interpretiert werden. 
-Eine schwache Korrelation legt nahe, dass die Stickstoffdioxid-Konzentrationen 
-in einem Datensatz nicht eng mit denen im anderen Datensatz verknüpft sind.
 
-In diesem Zusammenhang könnte eine schwache Korrelation bedeuten, dass sich die 
-Luftqualität (in Bezug auf Stickstoffdioxid-Konzentrationen) im untersuchten 
-Zeitraum oder zwischen den beiden untersuchten Standorten unterschiedlich 
-entwickelt hat. Dies könnte darauf hindeuten, dass die Faktoren, die die 
-Stickstoffdioxid-Konzentrationen beeinflussen, sich verändert haben oder 
-zwischen den beiden Standorten unterschiedlich sind.
+# Temporale Korrelation
 
-Dies könnte daran liegen, dass sich der Verkehr verändernt hat, oder regulationen
-für Luftquailität eingeführt worden sind, sowie an Veränderungen der Klima
-Bedingungen.
+Aus den Berechnungen folgen für die temporale und lokale Korrelation folgende Ergebnisse:
+
+$$
+r_{temp} = 0.16
+$$
 
 
+Die Werte des temporalen Korrelationskoeffizienten deuten auf eine schwache Korrelation zwischen den Stickstoffdioxid-Konzentrationen der untersuchten Zeitpunkte hin. Eine schwache Korrelation legt nahe, dass die Stickstoffdioxid-Konzentrationen in den verschiedenen Zeitperioden nicht stark miteinander verknüpft sind.
+
+In diesem Kontext könnte eine schwache Korrelation darauf hindeuten, dass die Luftqualität, gemessen an den Stickstoffdioxid-Konzentrationen, im betrachteten Zeitraum unterschiedliche Trends aufweist. Dies könnte bedeuten, dass die Faktoren, die die Stickstoffdioxid-Konzentrationen beeinflussen, sich im Laufe der Zeit verändert haben. Eine mögliche Ursache für solche Veränderungen könnte eine Veränderung im Verkehrsaufkommen oder in der Verkehrszusammensetzung sein, etwa durch den verstärkten Einsatz emissionsarmer Fahrzeuge oder veränderte Verkehrsflüsse infolge von Infrastrukturmaßnahmen. 
+
+# Lokale Korrelation
+
+Der Korrelationskoeffizient für die Daten von Oldenburg und Braunschweig beträgt:
+
+$$
+r_{lok} = 0.63
+$$
+Ein Korrelationskoeffizient von 0.63 deutet auf eine mittlere bis stärkere Korrelation zwischen den Daten der beiden Standorte hin. Dies deutet daraufhin, dass die Luftqualität, gemessen an der Stickstoffdioxid-Konzentration, einen ähnlichen Trend aufweist. Dies könnte bedeuten, dass die beiden Messstandorte ähnliche Verkehrsaufkommen haben. Jedoch ist zu beachten, dass der Wert 0.63 noch weit von 1 und somit von einer perfekt Korrelation entfernt ist, dies könnte unter anderem am nicht exakt gleichen Verkehrsaufkommen, unterschiedlichen Fahrzeugen, sowie der Ausrichtung und des Standortes der Messstation liegen. Die Daten der lokalen Standorte scheinen, jedoch mehr zusammenzuhängen als die Temporalen Daten.
+
+# Lineare Regression
 
 
 ```{r linear regression, message=FALSE}
 
-# Lineare Regression durchführen
+# linear regression
 linear_model <- lm(loc_cor_NO2_OL_df$`Oldenburg c(NO2) [ug/m^3]`
                    ~ loc_cor_NO2_OL_df$`Braunschweig c(NO2) [ug/m^3]`)
 
-# Ergebnisse des Regressionsmodells anzeigen
+# show results of linear regression
 summary(linear_model)
 
 data <- data.frame(Oldenburg = loc_cor_NO2_OL_df$`Oldenburg c(NO2) [ug/m^3]`
@@ -287,10 +284,23 @@ plot <- ggplot(data, aes(x = Braunschweig, y = Oldenburg)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE, color = "blue") +
   theme_minimal() +
-  labs(x = "Braunschweig", y = "Oldenburg", title = "Lineare Regression von NO2-Konzentrationen")
+  labs(x = "Braunschweig", y = "Oldenburg", title = "Lineare Regression NO2-Konzentrationen")
+```
+Der $R^2$ Wert von 0.3988 ist ein Maß für die Anpassungsgüte des linearen Regressionsmodells. Umso nährer der Wert an 1 liegt, umso Präziser die Vorhersage durch das Regressionsmodell. Der Wert von 0.3988 bedeutet, dass das Modell einen Teil der Variation in den Daten erklären kann, aber noch Raum für Verbesserungen gibt, um die restliche Varianz zu erklären.
 
-# Plot anzeigen
+Insgesamt zeigen diese Werte, dass es eine moderate lineare Beziehung zwischen den beiden Variablen gibt und das Regressionsmodell einen Teil der Varianz erklären kann. Dies deutet daraufhin, dass auch andere Faktoren einen Enfluss auf die Werte haben.
+
+```{r linear regression plot, message=FALSE}
+# print regression Plot
 print(plot)
 ```
+# Packages
 
-R-quadarat Wert von 0.3988
+Es wurden folgende Packages verwendet:
+
+tidyverse
+ggplot2
+zoo
+scales
+lubridate
+
