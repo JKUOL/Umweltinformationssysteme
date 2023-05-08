@@ -128,6 +128,15 @@ colnames(time_cor_NO2_OL_df) <- c("Time","c(NO2) [ug/m^3] 2019",
                                   "c(NO2) [ug/m^3] 2023")
 ```
 
+Die Daten zur Untersuchung der temporalen und lokalen korrelation wurden normalisiert und sind im 
+folgenden graphisch Dargestellt.
+
+Zur normalisierung wurde folgende Formel verwendet:
+$$
+nor_x = \frac{X_i- µ_x}{\sigma_x}
+$$
+
+
 ```{r Normalization time correlation data}
 # Normalize by subtracting the mean and dividing by the standard deviation
 nor_time_1 <- (NO2_OL_df$`ug/m^3`-mean(NO2_OL_df$`ug/m^3`))/sd(NO2_OL_df$`ug/m^3`)
@@ -198,7 +207,10 @@ ggplot(nor_loc_long, aes(x = Time, y = Value, color = Type, group = Type)) +
   scale_color_manual(values = c("nor_NO2_Ol" = "red", 
                                 "nor_NO2_BS" = "green"))
 ```
-
+The quadratic formula is:
+$$
+x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}
+$$
 ```{r correlation function}
 # correlation function (lecture)
 correlation_cof <- function(x, y) {
@@ -259,7 +271,7 @@ Bedingungen.
 
 
 
-```{r linear regression}
+```{r linear regression, message=FALSE}
 
 # Lineare Regression durchführen
 linear_model <- lm(loc_cor_NO2_OL_df$`Oldenburg c(NO2) [ug/m^3]`

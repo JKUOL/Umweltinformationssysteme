@@ -15,107 +15,103 @@ library(tidyverse)
 library(ggplot2)
 library(naivebayes)
 library(MASS)
+library(readr)
+library(mvtnorm)
 ```
 
 ``` {r, fish data cleaning}
-# load data frame
-fish_df <- read.csv2("fishcatch.csv")
+
+# Daten laden
+df <- read.csv2("fishcatch.csv")
 
 # remove unnecessary data
+df <- df[48:nrow(df),]
 
-fish_df <- fish_df[48:nrow(fish_df),]
-fish_df <- fish_df[,1:4]
-colnames(fish_df) <- c("Class", "Length1", "Length2", "Length3")
+colnames(df) <- c("Species", "Length1", "Length2", "Length3","Height", "Width",
+                       "sex", "Weight")
 
-# Replace every "?" with NA
+df <- as.data.frame(apply(df, 2, function(x) gsub(",", ".", x)))
 
-fish_df[fish_df == "?"] <- NA
+# List the columns you want to convert to numeric
+columns_to_convert <- c("Length1", "Length2", "Length3","Height", "Width",
+                       "Weight")
 
+mean
 
-fish_df <- as.data.frame(apply(fish_df, 2, function(x) gsub(",", ".", x)))
+# Convert the specified columns to numeric
+df <- df %>%
+  mutate(across(all_of(columns_to_convert), as.numeric))
 
-fish_df$Length1 <- as.numeric(fish_df$Length1)
-fish_df$Length2 <- as.numeric(fish_df$Length2)
-fish_df$Length3 <- as.numeric(fish_df$Length3)
+# Gruppieren nach Art
+grouped <- df %>%
+  group_by(Species)
 
-# counts fish classes
-fish_count <- fish_df %>%
-  group_by(Class) %>%
-  summarise(Count = n())
+# Für jede Gruppe den Mittelwert und die Standardabweichung berechnen
+summary_stats <- grouped %>%
+  summarise(Mean = mean(Weight, na.rm = TRUE),
+            StdDev = sd(Weight, na.rm = TRUE))
+
+# Ergebnisse ausgeben
+print(summary_stats)
 
 ```
 
 ``` {r, visualitation}
-ggplot(fish_count, aes(x = Class, y = Count)) +
-  geom_bar(stat = "identity", fill = "steelblue") +
-  theme_classic() +
-  labs(title = "Fish Count per Species",
-       x = "Species",
-       y = "Count")
-```
-``` {r, classification2}
+# Load the necessary libraries
+library(dplyr)
+library(mvtnorm)
 
-# Erstellen Sie das LDA-Modell
-model <- lda(Class ~ Length1 + Length2 + Length3, data = fish_df)
+# Maximum-Likelihood-Klassifikator
+fish_classifier <- function(x, grouped) {
+  max_prob <- 0
+  predicted_species <- NULL
 
+  for (name in unique(grouped$Species)) {
+    group <- filter(grouped, Species == name)
+    mean <- colMeans(select(group, Length1, Height, Width))
+    cov <- cov(select(group, Length1, Height, Width))
+    prob <- dmvnorm(x, mean = mean, sigma = cov)
 
-# Testdatensatz erstellen (jeder 10. Fisch)
-test_data <- fish_df[seq(1, nrow(fish_df), by = 10), ]
+    if (prob > max_prob) {
+      max_prob <- prob
+      predicted_species <- name
+    }
+  }
 
-# Vorhersagen treffen
-predictions <- predict(model, test_data)
+  return(predicted_species)
+}
 
-# Die Ergebnisse anzeigen
-result2 <- data.frame(
-  True_Art = test_data$Class,
-  Predicted_Art = predictions$class
-)
+# Beispiel
+x <- c(30, 10, 5)
+predicted_species <- fish_classifier(x, grouped)
+cat("Die wahrscheinlichste Art ist:", predicted_species, "\n")
 
-print(result2)
+# Test
+# Index-Liste aller 10. Fische im Trainingsdatensatz
+test_indices <- seq(9, nrow(df), 10)
 
-```
+# Schleife durch alle Test-Indizes
+correct_count <- 0
 
+for (i in test_indices) {
+  fish <- df[i, ]
+  true_class <- fish$Species
+  predicted_class <- fish_classifier(unname(unlist(fish[c("Length1", "Height", "Width")])), grouped)
 
+  if (true_class == predicted_class) {
+    correct_count <- correct_count + 1
+  }
+  
+  cat(sprintf("Fish %d: True class: %s, Predicted class: %s\n", i, true_class, predicted_class))
+}
 
-``` {r, classification2}
-# Create a list to store the separated dataframes
-separated_data <- list()
-
-# Split the dataframe by Species (Class) and store it in the list
-fish_df %>%
-  group_by(Class) %>%
-  group_split() %>%
-  { separated_data <<- set_names(., map_chr(., ~first(.x$Class))) }
-
-# transform list into numeric for calculations
-numeric_separated_data <- lapply(separated_data, function(df) {
-  data.frame(lapply(df, as.numeric), stringsAsFactors = FALSE)
-})
-
-# calculates the mean for every Speciess Lenght1, 2 and 3
-mean_list <- lapply(numeric_separated_data, function(df) {
-  colMeans(df, na.rm = TRUE)
-})
-
-# calculates the variance for every Speciess Lenght1, 2 and 3
-variance_list <- lapply(numeric_separated_data, function(df) {
-  sapply(df, var, na.rm = TRUE)
-})
-
-# Calculate the a priori probabilities for each fish species
-a_priori_prob <- fish_df %>%
-  group_by(Class) %>%
-  summarise(Count = n()) %>%
-  mutate(Probability = Count / sum(Count))
+accuracy <- correct_count / length(test_indices)
+cat(sprintf("Accuracy on test set: %.2f%%\n", accuracy * 100))
 
 ```
 
-``` {r, accuracy}
-# calculates accuracy
-accuracy <- mean(result2$True_Art == result2$Predicted_Art)
 
-# shows accuracy in %
-accuracy_percent <- accuracy * 100
-cat("Accuracy:", accuracy_percent, "%\n")
-```
+
+
+
 

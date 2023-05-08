@@ -48,7 +48,7 @@ fish_df <- fish_df %>%
 
 train_data <- fish_df[!(seq_len(nrow(fish_df)) %% 10 == 0), ]
 
-# Testdatensatz erstellen (jeder 10. Fisch)
+# test df (every 10. Fish)
 test_data <- fish_df[seq(1, nrow(fish_df), by = 10), ]
 ```
 
@@ -175,3 +175,146 @@ cat("The accuracy of the QDA classifier on the test set is:", accuracy * 100, "%
 ```
 ## The accuracy of the QDA classifier on the test set is: 81.25 %
 ```
+
+```r
+# Create a long-format data frame
+long_fish_1_df <- fish_df %>%
+  dplyr::select(Species, Length1, Length2, Length3, Height, Width) %>%
+  tidyr::gather(key = "Feature", value = "Value", -c(Species, Length1))
+
+long_fish_2_df <- fish_df %>%
+  dplyr::select(Species, Length1, Length2, Length3, Height, Width) %>%
+  tidyr::gather(key = "Feature", value = "Value", -c(Species, Length2))
+
+long_fish_3_df <- fish_df %>%
+  dplyr::select(Species, Length1, Length2, Length3, Height, Width) %>%
+  tidyr::gather(key = "Feature", value = "Value", -c(Species, Length3))
+
+long_fish_4_df <- fish_df %>%
+  dplyr::select(Species, Length1, Length2, Length3, Height, Width) %>%
+  tidyr::gather(key = "Feature", value = "Value", -c(Species, Height))
+
+long_fish_5_df <- fish_df %>%
+  dplyr::select(Species, Length1, Length2, Length3, Height, Width) %>%
+  tidyr::gather(key = "Feature", value = "Value", -c(Species, Width))
+
+ggplot(long_fish_1_df, aes(x = Length1, y = Value, color = factor(Species))) +
+  geom_point() +
+  labs(x = "Length1", y = "Value", color = "Species") +
+  theme_minimal() +
+  facet_wrap(~Feature, ncol = 4) +
+  ggtitle("Scatter plots of Length1 vs. other features")
+```
+
+![](Fish-Classifier_files/figure-html/plotting-1.png)<!-- -->
+
+```r
+ggplot(long_fish_2_df, aes(x = Length2, y = Value, color = factor(Species))) +
+  geom_point() +
+  labs(x = "Length2", y = "Value", color = "Species") +
+  theme_minimal() +
+  facet_wrap(~Feature, ncol = 4) +
+  ggtitle("Scatter plots of Length2 vs. other features")
+```
+
+![](Fish-Classifier_files/figure-html/plotting-2.png)<!-- -->
+
+```r
+ggplot(long_fish_2_df, aes(x = Length2, y = Value, color = factor(Species))) +
+  geom_point() +
+  labs(x = "Length2", y = "Value", color = "Species") +
+  theme_minimal() +
+  facet_wrap(~Feature, ncol = 4) +
+  ggtitle("Scatter plots of Length2 vs. other features")
+```
+
+![](Fish-Classifier_files/figure-html/plotting-3.png)<!-- -->
+
+```r
+ggplot(long_fish_3_df, aes(x = Length3, y = Value, color = factor(Species))) +
+  geom_point() +
+  labs(x = "Length3", y = "Value", color = "Species") +
+  theme_minimal() +
+  facet_wrap(~Feature, ncol = 4) +
+  ggtitle("Scatter plots of Length3 vs. other features")
+```
+
+![](Fish-Classifier_files/figure-html/plotting-4.png)<!-- -->
+
+```r
+ggplot(long_fish_4_df, aes(x = Height, y = Value, color = factor(Species))) +
+  geom_point() +
+  labs(x = "Height", y = "Value", color = "Species") +
+  theme_minimal() +
+  facet_wrap(~Feature, ncol = 4) +
+  ggtitle("Scatter plots of Height vs. other features")
+```
+
+![](Fish-Classifier_files/figure-html/plotting-5.png)<!-- -->
+
+```r
+ggplot(long_fish_5_df, aes(x = Width, y = Value, color = factor(Species))) +
+  geom_point() +
+  labs(x = "Width", y = "Value", color = "Species") +
+  theme_minimal() +
+  facet_wrap(~Feature, ncol = 4) +
+  ggtitle("Scatter plots of Width vs. other features")
+```
+
+![](Fish-Classifier_files/figure-html/plotting-6.png)<!-- -->
+
+
+```r
+# Create a box plot
+ggplot(train_data, aes(x = Species, y = Length1, fill = Species)) +
+  geom_boxplot() +
+  labs(x = "Species", y = "Length1") +
+  theme_minimal() +
+  ggtitle("Box plot of Length1 by fish species")
+```
+
+![](Fish-Classifier_files/figure-html/Boxplots-1.png)<!-- -->
+
+```r
+# Create a box plot
+ggplot(train_data, aes(x = Species, y = Length2, fill = Species)) +
+  geom_boxplot() +
+  labs(x = "Species", y = "Length2") +
+  theme_minimal() +
+  ggtitle("Box plot of Length2 by fish species")
+```
+
+![](Fish-Classifier_files/figure-html/Boxplots-2.png)<!-- -->
+
+```r
+# Create a box plot
+ggplot(train_data, aes(x = Species, y = Length3, fill = Species)) +
+  geom_boxplot() +
+  labs(x = "Species", y = "Length3") +
+  theme_minimal() +
+  ggtitle("Box plot of Length3 by fish species")
+```
+
+![](Fish-Classifier_files/figure-html/Boxplots-3.png)<!-- -->
+
+```r
+# Create a box plot
+ggplot(train_data, aes(x = Species, y = Height, fill = Species)) +
+  geom_boxplot() +
+  labs(x = "Species", y = "Height") +
+  theme_minimal() +
+  ggtitle("Box plot of Height by fish species")
+```
+
+![](Fish-Classifier_files/figure-html/Boxplots-4.png)<!-- -->
+
+```r
+# Create a box plot
+ggplot(train_data, aes(x = Species, y = Width, fill = Species)) +
+  geom_boxplot() +
+  labs(x = "Species", y = "Width") +
+  theme_minimal() +
+  ggtitle("Box plot of Width by fish species")
+```
+
+![](Fish-Classifier_files/figure-html/Boxplots-5.png)<!-- -->
