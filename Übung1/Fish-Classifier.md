@@ -48,7 +48,7 @@ fish_count <- fish_df %>%
 fish_df <- fish_df %>%
   mutate(across(all_of(columns_to_convert), as.numeric))
 
-
+# training data (data frame without every 10th row)
 train_data <- fish_df[!(seq_len(nrow(fish_df)) %% 10 == 0), ]
 
 # test df (every 10. Fish)
@@ -66,8 +66,6 @@ ggplot(fish_count, aes(x = Species, y = Count)) +
 ```
 
 ![](Fish-Classifier_files/figure-html/visualitation-1.png)<!-- -->
-
-
 Die Normalverteilungsparameter sind in folgender Tabelle zusammengefasst.
 
 ```r
@@ -116,13 +114,13 @@ print(normal_params)
 
 Zuerst werden die einzigartigen Fischarten aus den Trainingsdaten extrahiert und für jede Fischart werden die Mittelwerte, die Kovarianzmatrix und die a-priori Wahrscheinlichkeiten berechnet.
 
-Die multi_gau Funktion berechnet die Dichte der multivariaten Gaußverteilung für einen gegebenen Datenpunkt x und die Verteilungsparameter (Mittelwert und Kovarianzmatrix).
+DDie Dichte der multivariaten Gaußverteilung für einen gegebenen Datenpunkt und die Verteilungsparameter wird berechnet.
 
-Die classify_fish_qda Funktion klassifiziert einen Fisch basierend auf der Maximum-Likelihood-Methode. Dazu wird für jeden Datenpunkt die bedingte Wahrscheinlichkeit für jede Fischart berechnet und mit der a-priori Wahrscheinlichkeit multipliziert. Die Fischart mit der höchsten resultierenden Wahrscheinlichkeit wird als die vorhergesagte Spezies ausgewählt.
+Die classifier_fish Funktion klassifiziert einen Fisch basierend auf der Maximum-Likelihood-Methode. Dazu wird für jeden Datenpunkt die bedingte Wahrscheinlichkeit für jede Fischart berechnet und mit der a-priori Wahrscheinlichkeit multipliziert. Die Fischart mit der höchsten resultierenden Wahrscheinlichkeit wird als die vorhergesagte Spezies ausgewählt.
 
-Schließlich wird der QDA-Klassifikator auf dem Testdatensatz angewendet und die Genauigkeit berechnet, indem die Anzahl der korrekt vorhergesagten Spezies durch die Gesamtanzahl der Vorhersagen geteilt wird.
+Schließlich wird der Klassifikator auf dem Testdatensatz angewendet und die Genauigkeit berechnet, indem die Anzahl der korrekt vorhergesagten Spezies durch die Gesamtanzahl der Vorhersagen geteilt wird.
 
-
+Die Genauigkeit des Klassifikators beträgt 100%.
 
 ```r
 # Calculate the mean, covariance, and a-priori probability for each fish species
@@ -144,8 +142,8 @@ multi_gau <- function(x, mean, cov) {
   exp(-0.5 * t(x - mean) %*% solve(cov, x - mean)) / sqrt((2 * pi)^k * det(cov))
 }
 
-# QDA classifier
-classify_fish_qda <- function(lengths) {
+# classifier
+classifier_fish <- function(lengths) {
   likelihoods <- sapply(stats_list, function(params) {
     likelihood <- multi_gau(lengths, params$mean, params$cov)
     likelihood * params$prior
@@ -155,15 +153,39 @@ classify_fish_qda <- function(lengths) {
 }
 
 # Classify each fish in the test set
-predicted_species <- apply(test_data[, c("Length1", "Length2", "Length3", "Height", "Width")], 1, classify_fish_qda)
+predicted_species <- apply(test_data[, c("Length1", "Length2", "Length3", "Height", "Width")], 1, classifier_fish)
+
+comparision_df <- data.frame(species = test_data$Species, prediction = predicted_species)
 
 # Calculate accuracy
 correct_predictions <- sum(predicted_species == test_data$Species)
 total_predictions <- length(predicted_species)
-
 accuracy <- correct_predictions / total_predictions
+
+print(comparision_df)
 ```
-Die Genauigkeit des Klassifikators beträgt 100%.
+
+```
+##     species prediction
+## 48        1          1
+## 58        1          1
+## 68        1          1
+## 78        1          1
+## 88        3          3
+## 98        3          3
+## 108       4          4
+## 118       4          4
+## 128       5          5
+## 138       6          6
+## 148       6          6
+## 158       7          7
+## 168       7          7
+## 178       7          7
+## 188       7          7
+## 198       7          7
+```
+
+# Visualisierung
 
 Im folgenden sind Diagramme dargestellt, welche die abhängigkeiten der einzelnen Variablen untereinander darstellen.
 
@@ -256,6 +278,20 @@ ggplot(long_fish_5_df, aes(x = Width, y = Value, color = factor(Species))) +
 
 # Quellen
 
-https://www.datascienceblog.net/post/machine-learning/linear-discriminant-analysis/#:~:text=Linear%20discriminant%20analysis%20(LDA)%20is,non%2Dlinear%20separation%20of%20data.
+[1] Vorlesungsscript
 
-https://towardsdatascience.com/quadratic-discriminant-analysis-ae55d8a8148a
+[2] Trevor Hastie Robert Tibshirani Jerome Friedman. The Elements of Statistical Learningm Data Mining, Inference, and Prediction. Springer Series in Statistics. 2009
+
+[3] Towards Data Science. Quadratic Discriminant Analysis. Zugriffszeit: 05.05.2023 21:55 Uhr. https://towardsdatascience.com/quadratic-discriminant-analysis-ae55d8a8148a
+
+# Packages
+
+Es wurden folgende Packages verwendet:
+
+tidyverse,
+ggplot2,
+zoo,
+scales,
+lubridate,
+mvtnorm,
+caret

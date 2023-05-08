@@ -294,13 +294,17 @@ Insgesamt zeigen diese Werte, dass es eine moderate lineare Beziehung zwischen d
 # print regression Plot
 print(plot)
 ```
+# Quellen
+
+[1] Vorlesungsscript
+
 # Packages
 
 Es wurden folgende Packages verwendet:
 
-tidyverse
-ggplot2
-zoo
-scales
+tidyverse,
+ggplot2,
+zoo,
+scales,
 lubridate
 
