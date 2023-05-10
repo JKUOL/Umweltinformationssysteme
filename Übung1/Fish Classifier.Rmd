@@ -1,19 +1,21 @@
 ---
 title: "2. Fish Classifier"
 author: "Gruppe 23 Justin König, Ali Abdullah, Rita Tagoula Ngoufo"
-date: "08.05.2023"
+date: "10.05.2023"
 output:
+  pdf_document:
+    toc: yes
   html_document:
     keep_md: yes
     code_folding: hide
     theme: yeti
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: yes
 editor_options:
   markdown:
     wrap: 72
+header-includes:
+   - \usepackage{ragged2e}
 ---
 
 ``` {r setup, include=FALSE}
@@ -24,6 +26,10 @@ cat("\014")
 # sets path to file
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
+knitr::opts_chunk$set(
+  fig.align = "center"
+)
+
 library(tidyverse)
 library(ggplot2)
 library(zoo)
@@ -31,11 +37,32 @@ library(scales)
 library(lubridate)
 library(mvtnorm)
 library(caret)
+library(grid)
+library(gridExtra)
+library(gt)
 ```
 
+```{css, echo=FALSE}
+body {
+  text-align: justify;
+}
+```
+```{css, echo = FALSE}
+.gt_table {
+  margin-left: auto;
+  margin-right: auto;
+}
+```
 # Daten
 
-Es wurde ein Datensatz verwendet, welcher aus Länge1, Länge2, Länge3, Höhe, Breite, Geschlecht, sowie dem Gewicht von 7 unterschiedlichen Fischarten besteht. Aus Länge1, Länge2, Länge3, Höhe und breite, sollte ein Classifier erstellt werden, welcher die Fischspezies aus einem Testdatensatz, bestehend aus jeder 10ten Reihe des Hauptdatensatzes, vorhersagen sollte.
+Ein Datensatz, der aus Länge1, Länge2, Länge3, Höhe, Breite, Geschlecht und 
+Gewicht von 7 verschiedenen Fischarten besteht, wurde für die Analyse verwendet. 
+Ziel war es, einen Klassifikator zu entwickeln, der die Fischspezies basierend 
+auf den Merkmalen Länge1, Länge2, Länge3, Höhe und Breite in einem Testdatensatz 
+vorhersagen kann. Der Testdatensatz wurde aus jeder 10. Zeile des ursprünglichen 
+Datensatzes gebildet. Die verbleibenden Daten wurden als Trainingsdatensatz
+verwendet, um den Klassifikator zu trainieren und dessen Leistung anhand des
+Testdatensatzes zu bewerten.
 
 ```{r, data cleaning}
 # load data frame
@@ -44,19 +71,14 @@ fish_df <- read.csv2("fishcatch.csv")
 # remove unnecessary data
 fish_df <- fish_df[48:nrow(fish_df),]
 
-colnames(fish_df) <- c("Species", "Length1", "Length2", "Length3","Height", "Width",
-                       "sex", "Weight")
+colnames(fish_df) <- c("Species", "Length1", "Length2", "Length3","Height", 
+                       "Width", "sex", "Weight")
 
 fish_df <- as.data.frame(apply(fish_df, 2, function(x) gsub(",", ".", x)))
 
 # List the columns you want to convert to numeric
 columns_to_convert <- c("Length1", "Length2", "Length3","Height", "Width",
                        "Weight")
-
-# counts fish classes
-fish_count <- fish_df %>%
-  group_by(Species) %>%
-  summarise(Count = n())
 
 # Convert the specified columns to numeric
 fish_df <- fish_df %>%
@@ -67,17 +89,44 @@ train_data <- fish_df[!(seq_len(nrow(fish_df)) %% 10 == 0), ]
 
 # test df (every 10. Fish)
 test_data <- fish_df[seq(1, nrow(fish_df), by = 10), ]
+
+# counts fish classes
+fish_count <- train_data %>%
+  group_by(Species) %>%
+  summarise(Count = n())
+
+# creates a tibble out of the df
+fish_count <- as_tibble(fish_count)
+
 ```
-Im folgenden Diagramm ist die Anzahl der jeweiligen Fischspezies im Datensatz dargstellt.
+
+Im folgenden Diagramm ist die Anzahl der jeweiligen Fischspezies im 
+Trainingsatensatz dargstellt.
+
 ``` {r, visualitation}
-ggplot(fish_count, aes(x = Species, y = Count)) +
+# creates the theme tt2 with minimal settings
+tt2 <- ttheme_minimal()
+
+# creates a grob to put inside of the bar plot
+fish_count_grob <- tableGrob(fish_count, theme = tt2, rows = NULL)
+
+fish_count_plot <- ggplot(fish_count, aes(x = Species, y = Count)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   theme_classic() +
   labs(title = "Fish Count per Species",
        x = "Species",
        y = "Count")
+
+fish_count_plot_with_table <- fish_count_plot +
+  annotation_custom(
+    grob = fish_count_grob, 
+    xmin = 5, xmax = 5.5, ymin = 20, ymax = 50
+  )
+print(fish_count_plot_with_table)
 ```
-Die Normalverteilungsparameter sind in folgender Tabelle zusammengefasst.
+
+Die Normalverteilungsparameter sind in der folgender Tabelle zusammengefasst.
+
 ``` {r, summary}
 
 # group by species
@@ -87,81 +136,39 @@ grouped_fish <- fish_df %>%
 # calculates mean and standarddeviation
 normal_params <- grouped_fish %>%
   summarise(
-    Mean_Length1 = mean(Length1, na.rm = TRUE),
-    Mean_Length2 = mean(Length2, na.rm = TRUE),
-    Mean_Length3 = mean(Length3, na.rm = TRUE),
-    Mean_Height = mean(Height, na.rm = TRUE),
-    Mean_Width = mean(Width, na.rm = TRUE),
-    Mean_Weight = mean(Weight, na.rm = TRUE),
-    SD_Length1 = sd(Length1, na.rm = TRUE),
-    SD_Length2 = sd(Length2, na.rm = TRUE),
-    SD_Length3 = sd(Length3, na.rm = TRUE),
-    SD_Height = sd(Height, na.rm = TRUE),
-    SD_Width = sd(Width, na.rm = TRUE),
-    SD_Weight = sd(Weight, na.rm = TRUE)
+    "mean L1" = mean(Length1, na.rm = TRUE),
+    "mean L2" = mean(Length2, na.rm = TRUE),
+    "mean L3" = mean(Length3, na.rm = TRUE),
+    "mean H" = mean(Height, na.rm = TRUE),
+    "mean W" = mean(Width, na.rm = TRUE),
+    "SD L1" = sd(Length1, na.rm = TRUE),
+    "SD L2" = sd(Length2, na.rm = TRUE),
+    "SD L3" = sd(Length3, na.rm = TRUE),
+    "SD H" = sd(Height, na.rm = TRUE),
+    "SD W" = sd(Width, na.rm = TRUE),
   )
 
-print(normal_params)
-```
+rounded_normal_params <- normal_params %>%
+  mutate_if(is.numeric, round, digits = 2)
 
-# Klassifikator
+# creates a table out of the tibble
+normal_params_gt <- gt(rounded_normal_params)
 
-Zuerst werden die einzigartigen Fischarten aus den Trainingsdaten extrahiert und für jede Fischart werden die Mittelwerte, die Kovarianzmatrix und die a-priori Wahrscheinlichkeiten berechnet.
+# changes to the table
+normal_params_gt <- 
+  normal_params_gt %>%
+  # Titel
+  tab_header(
+    title = "Normal distribution parameters ",
+  )
 
-DDie Dichte der multivariaten Gaußverteilung für einen gegebenen Datenpunkt und die Verteilungsparameter wird berechnet.
-
-Die classifier_fish Funktion klassifiziert einen Fisch basierend auf der Maximum-Likelihood-Methode. Dazu wird für jeden Datenpunkt die bedingte Wahrscheinlichkeit für jede Fischart berechnet und mit der a-priori Wahrscheinlichkeit multipliziert. Die Fischart mit der höchsten resultierenden Wahrscheinlichkeit wird als die vorhergesagte Spezies ausgewählt.
-
-Schließlich wird der Klassifikator auf dem Testdatensatz angewendet und die Genauigkeit berechnet, indem die Anzahl der korrekt vorhergesagten Spezies durch die Gesamtanzahl der Vorhersagen geteilt wird.
-
-Die Genauigkeit des Klassifikators beträgt 100%.
-```{r, classifieing}
-# Calculate the mean, covariance, and a-priori probability for each fish species
-species_list <- unique(train_data$Species)
-stats_list <- lapply(species_list, function(species) {
-  species_data <- train_data[train_data$Species == species, c("Length1", "Length2", "Length3", "Height", "Width")]
-  n <- nrow(species_data)
-  
-  list(mean = colMeans(species_data),
-       cov = cov(species_data) + diag(1e-6, ncol(species_data)),
-       prior = n / nrow(train_data))
-})
-
-names(stats_list) <- species_list
-
-# Multivariate Gaussian density function
-multi_gau <- function(x, mean, cov) {
-  k <- length(mean)
-  exp(-0.5 * t(x - mean) %*% solve(cov, x - mean)) / sqrt((2 * pi)^k * det(cov))
-}
-
-# classifier
-classifier_fish <- function(lengths) {
-  likelihoods <- sapply(stats_list, function(params) {
-    likelihood <- multi_gau(lengths, params$mean, params$cov)
-    likelihood * params$prior
-  })
-  
-  names(likelihoods)[which.max(likelihoods)]
-}
-
-# Classify each fish in the test set
-predicted_species <- apply(test_data[, c("Length1", "Length2", "Length3", "Height", "Width")], 1, classifier_fish)
-
-# summary of species in test data and predicted species
-comparision_df <- data.frame(Species = test_data$Species, Srediction = predicted_species)
-
-# Calculate accuracy
-correct_predictions <- sum(predicted_species == test_data$Species)
-total_predictions <- length(predicted_species)
-accuracy <- correct_predictions / total_predictions
-
-print(comparision_df)
+normal_params_gt
 ```
 
 # Visualisierung
 
-Im folgenden sind Diagramme dargestellt, welche die abhängigkeiten der einzelnen Variablen untereinander darstellen.
+Im folgenden sind Diagramme dargestellt, welche die Abhängigkeiten der einzelnen 
+Variablen untereinander darstellen.
 ```{r, plotting }
 
 # Create a long-format data frame
@@ -199,13 +206,6 @@ ggplot(long_fish_2_df, aes(x = Length2, y = Value, color = factor(Species))) +
   facet_wrap(~Feature, ncol = 4) +
   ggtitle("Scatter plots of Length2 vs. other features")
 
-ggplot(long_fish_2_df, aes(x = Length2, y = Value, color = factor(Species))) +
-  geom_point() +
-  labs(x = "Length2", y = "Value", color = "Species") +
-  theme_minimal() +
-  facet_wrap(~Feature, ncol = 4) +
-  ggtitle("Scatter plots of Length2 vs. other features")
-
 ggplot(long_fish_3_df, aes(x = Length3, y = Value, color = factor(Species))) +
   geom_point() +
   labs(x = "Length3", y = "Value", color = "Species") +
@@ -228,22 +228,338 @@ ggplot(long_fish_5_df, aes(x = Width, y = Value, color = factor(Species))) +
   ggtitle("Scatter plots of Width vs. other features")
 ```
 
+
+
+# Klassifikator
+
+Zunächst werden die einzigartigen Fischarten aus den Trainingsdaten ermittelt.
+Für jede Fischart werden daraufhin die Mittelwerte, Kovarianzmatrizen und 
+a-priori Wahrscheinlichkeiten berechnet.
+
+Anschließend wird die Dichte der multivariaten Gaußverteilung für jeden 
+gegebenen Datenpunkt und die zugehörigen Verteilungsparameter ermittelt.
+
+Die LDA- und QDA-Classifier nutzen die Maximum-Likelihood-Methode, um Fische 
+basierend auf den Merkmalen zu klassifizieren. Hierbei wird für jeden Datenpunkt 
+die bedingte Wahrscheinlichkeit jeder Fischart berechnet und mit der 
+entsprechenden a-priori Wahrscheinlichkeit multipliziert. Die Fischart mit der 
+höchsten resultierenden Wahrscheinlichkeit wird als vorhergesagte Spezies 
+ausgewählt. Der Unterschied zwischen der LDA- und QDA-Methode liegt in der 
+Annahme bezüglich der Kovarianzmatrizen: Bei der LDA wird eine gemeinsame 
+Kovarianzmatrix für alle Klassen angenommen, während bei der QDA jeder Klasse 
+eine individuelle Kovarianzmatrix zugeordnet wird. Dies führt dazu, dass 
+QDA-Classifier flexibler sind und komplexere Trennlinien zwischen den Klassen 
+ermöglichen, während LDA-Classifier weniger anfällig für Überanpassung sind, 
+sofern die Annahme einer gemeinsamen Kovarianzmatrix zutreffend ist.
+
+Abschließend wird der Klassifikator auf den Testdatensatz angewendet, und die 
+Genauigkeit ermittelt, indem die Anzahl der korrekt vorhergesagten Spezies 
+durch die Gesamtanzahl der Vorhersagen geteilt wird.
+
+```{r, LDA and QDA Classifier}
+# Calculate the mean, covariance, and a-priori probability for each fish species
+species_list <- unique(train_data$Species)
+stats_list <- lapply(species_list, function(species) {
+  species_data <- train_data[train_data$Species == 
+                               species, c("Length1", "Length2", 
+                                          "Length3", "Height", "Width")]
+  n <- nrow(species_data)
+  
+  list(mean = colMeans(species_data),
+       cov = cov(species_data) + diag(1e-6, ncol(species_data)),
+       prior = n / nrow(train_data))
+})
+
+names(stats_list) <- species_list
+
+# Multivariate Gaussian density function
+multi_gau <- function(x, mean, cov) {
+  k <- length(mean)
+  exp(-0.5 * t(x - mean) %*% solve(cov, x - mean)) / sqrt((2 * pi)^k * det(cov))
+}
+
+### QDA ###
+
+# classifier
+classifier_fish_qda <- function(lengths) {
+  likelihoods <- sapply(stats_list, function(params) {
+    likelihood <- multi_gau(lengths, params$mean, params$cov)
+    likelihood * params$prior
+  })
+  
+  names(likelihoods)[which.max(likelihoods)]
+}
+
+# Classify each fish in the test set
+predicted_species_qda <- apply(test_data[, c("Length1", "Length2", "Length3", 
+                                             "Height", "Width")], 
+                               1, classifier_fish_qda)
+
+### LDA ###
+
+# Calculate the common covariance matrix for LDA
+common_cov <- cov(train_data[, c("Length1", "Length2", "Length3", "Height", 
+                                 "Width")]) + 
+  diag(1e-6, ncol(train_data[, c("Length1", 
+                                 "Length2", "Length3", "Height", "Width")]))
+
+# LDA classifier
+classifier_fish_lda <- function(lengths) {
+  likelihoods <- sapply(stats_list, function(params) {
+    likelihood <- multi_gau(lengths, params$mean, common_cov)
+    likelihood * params$prior
+  })
+  
+  names(likelihoods)[which.max(likelihoods)]
+}
+
+# Classify each fish in the test set
+predicted_species_lda <- apply(test_data[, c("Length1", 
+                                             "Length2", "Length3",
+                                             "Height", "Width")], 
+                               1, classifier_fish_lda)
+
+
+# summary of species in test data and predicted species
+comparision_qda_df <- data.frame(Species = test_data$Species, 
+                                 Prediction = predicted_species_qda)
+comparision_lda_df <- data.frame(Species = test_data$Species,
+                                 Prediction = predicted_species_lda)
+
+# Calculate accuracy
+correct_predictions_lda <- sum(predicted_species_lda == test_data$Species)
+correct_predictions_qda<- sum(predicted_species_qda == test_data$Species)
+
+# total predictions
+total_predictions <- length(predicted_species_lda)
+
+
+accuracy_lda <- correct_predictions_lda / total_predictions
+accuracy_qda <- correct_predictions_qda / total_predictions
+
+```
+
+In der folgenden Tabelle, ist die Maximum-Liklyhood zusammengefasst. Grüne 
+Zellen wurde korrekt vorhergesagt, rosane falsch.
+```{r, Maximum-Liklyhood-Tables}
+
+# LDA classifier with likelihood percentages
+classifier_fish_lda_percent <- function(lengths) {
+  likelihoods <- sapply(stats_list, function(params) {
+    likelihood <- multi_gau(lengths, params$mean, common_cov)
+    likelihood * params$prior
+  })
+
+  likelihood_percentages <- likelihoods / sum(likelihoods) * 100
+  return(likelihood_percentages)
+}
+
+# QDA classifier with likelihood percentages
+classifier_fish_qda_percent <- function(lengths) {
+  likelihoods <- sapply(stats_list, function(params) {
+    likelihood <- multi_gau(lengths, params$mean, params$cov)
+    likelihood * params$prior
+  })
+
+  likelihood_percentages <- likelihoods / sum(likelihoods) * 100
+  return(likelihood_percentages)
+}
+
+# Apply the modified classifiers to the test data
+lda_likelihood_percentages <- t(apply(test_data[, c("Length1",
+                                                    "Length2", "Length3", 
+                                                    "Height", "Width")], 
+                                      1, classifier_fish_lda_percent))
+qda_likelihood_percentages <- t(apply(test_data[, c("Length1", 
+                                                    "Length2", "Length3", 
+                                                    "Height", "Width")], 
+                                      1, classifier_fish_qda_percent))
+
+# Create data frames for the likelihood percentages
+lda_percent_df <- data.frame(lda_likelihood_percentages, 
+                             Species = test_data$Species)
+qda_percent_df <- data.frame(qda_likelihood_percentages, 
+                             Species = test_data$Species)
+
+# Number of decimal places you want to round to
+decimal_places <- 1000
+
+# Round all numbers in the data frame, excluding the Species column
+lda_percent_df_rounded <- 
+  as.data.frame(lapply(lda_percent_df[, -ncol(lda_percent_df)], 
+                       function(x) round(x, decimal_places)))
+lda_percent_df_rounded$Species <- lda_percent_df$Species 
+
+# Round all numbers in the data frame, excluding the Species column
+qda_percent_df_rounded <- 
+  as.data.frame(lapply(qda_percent_df[, -ncol(qda_percent_df)], 
+                       function(x) round(x, decimal_places)))
+qda_percent_df_rounded$Species <- qda_percent_df$Species  
+
+# Format all numbers in the data frame, excluding the Species column
+lda_percent_df_sci <- 
+  as.data.frame(lapply(lda_percent_df_rounded[, -ncol(lda_percent_df_rounded)],
+                       function(x) formatC(x, format = "e", digits = 2)))
+lda_percent_df_sci$Species <- lda_percent_df_rounded$Species  
+
+# Format all numbers in the data frame, excluding the Species column
+qda_percent_df_sci <- 
+  as.data.frame(lapply(qda_percent_df_rounded[, -ncol(qda_percent_df_rounded)], 
+                       function(x) formatC(x, format = "e", digits = 2)))
+qda_percent_df_sci$Species <- qda_percent_df_rounded$Species  
+
+lda_percent_df_sci$Prediction <- predicted_species_lda
+qda_percent_df_sci$Prediction <- predicted_species_qda
+
+# find the column with the max value for each row
+lda_percent_df_sci$max_col <- apply(lda_percent_df_sci, 1, 
+                                    function(x) which.max(as.numeric(x)))
+
+# create gt table
+lda_percent_gt_sci <- gt(lda_percent_df_sci)
+
+# iterate over rows of the table to color the max value cell
+for (i in seq_len(nrow(lda_percent_df_sci))) {
+  lda_percent_gt_sci <- tab_style(
+    lda_percent_gt_sci,
+    style = cell_fill(color = "lightgreen"),
+    locations = cells_body(
+      columns = lda_percent_df_sci$max_col[i],
+      rows = i
+    )
+  )
+}
+
+# changes to table
+lda_percent_gt_sci <- 
+  lda_percent_gt_sci %>%
+  cols_hide(columns = "max_col") %>% 
+  # Title
+  tab_header(
+    title = "Maximum-Liklyhood-Selections LDA-Classifier",
+    subtitle = "in Percent [%]"
+  ) %>%
+  # color cell
+  tab_style(
+    style = cell_fill(color = "lightpink"),
+    locations = cells_body(
+      columns = c(7),
+      rows = 6)
+    ) %>% 
+  tab_style(
+    style = cell_fill(color = "lightgoldenrodyellow"),
+    locations = cells_body(
+      columns = c(3),
+      rows = 6)
+    )
+
+qda_percent_df <- qda_percent_df_sci
+
+# find the column with the max value for each row
+qda_percent_df$max_col <- apply(qda_percent_df, 1, 
+                                function(x) which.max(as.numeric(x)))
+
+# create gt table
+qda_percent_gt_sci <- gt(qda_percent_df)
+
+# iterate over rows of the table to color the max value cell
+for (i in seq_len(nrow(qda_percent_df))) {
+  qda_percent_gt_sci <- tab_style(
+    qda_percent_gt_sci,
+    style = cell_fill(color = "lightgreen"),
+    locations = cells_body(
+      columns = qda_percent_df$max_col[i],
+      rows = i
+    )
+  )
+}
+# changes to table
+qda_percent_gt_sci <- 
+  qda_percent_gt_sci %>%
+  cols_hide(columns = "max_col") %>% 
+  # Title
+  tab_header(
+    title = "Maximum-Liklyhood-Selections QDA-Classifier",
+    subtitle = "in Percent [%]"
+  )
+
+lda_percent_gt_sci
+qda_percent_gt_sci
+
+```
+
+Wie in der folgenden Graphik zu sehen ist, ist die Genauigkeit des 
+QDA-Classifiers höher (100%), als die des LDA-Classifiers, welcher eine 
+Genauigkeit von 93,75%  aufweist. 
+
+```{r, classifieing comparison}
+
+# For LDA classifier
+comparision_df_lda <- data.frame(Species = test_data$Species, 
+                                 Prediction = predicted_species_lda)
+
+# For QDA classifier
+comparision_df_qda <- data.frame(Species = test_data$Species, 
+                                 Prediction = predicted_species_qda)
+
+# Create scatter plots for LDA and QDA
+plot_lda <- ggplot(comparision_df_lda, aes(x = Species, y = 
+                                             Prediction, color = Species)) +
+  geom_point() +
+  labs(title = "LDA Classifier", x = "Actual Species", y = 
+         "Predicted Species") +
+  theme_minimal()
+
+plot_qda <- ggplot(comparision_df_qda, aes(x = Species, y = 
+                                             Prediction, color = Species)) +
+  geom_point() +
+  labs(title = "QDA Classifier", x = "Actual Species", y = "Predicted Species") +
+  theme_minimal()
+
+data_table <- data.frame("LDA Pred." = predicted_species_lda,   
+                         Species = test_data$Species, 
+                         "QDA Pred." = predicted_species_qda)
+
+table_theme <- ttheme_minimal(
+  core = list(fg_params = list(hjust = 0, x = 0.1)),
+  colhead = list(fg_params = list(hjust = 0, x = 0.1))
+)
+
+# Convert the data frame to a tableGrob
+table_grob <- tableGrob(data_table,  theme = tt2, rows = NULL)
+# Adjust the table size
+
+# Display plots side by side with the table of Species and Predictions
+grid.arrange(plot_lda, table_grob, plot_qda, ncol = 3)
+```
+
+
+
+
 # Quellen
 
-[1] Vorlesungsscript
+[1] Vorlesungsscript Datenerfassung in Umweltinformationssystemen
 
-[2] Trevor Hastie Robert Tibshirani Jerome Friedman. The Elements of Statistical Learningm Data Mining, Inference, and Prediction. Springer Series in Statistics. 2009
+[2] Trevor Hastie Robert Tibshirani Jerome Friedman. The Elements of 
+Statistical Learning Data Mining, Inference, and Prediction. 
+Springer Series in Statistics. 2009
 
-[3] Towards Data Science. Quadratic Discriminant Analysis. Zugriffszeit: 05.05.2023 21:55 Uhr. https://towardsdatascience.com/quadratic-discriminant-analysis-ae55d8a8148a
+[3] Scikit-learn. Linear and Quadratic Discriminant Analysis. Zugriffszeit: 08.05.2023 17:45 Uhr. https://scikit-learn.org/stable/modules/lda_qda.html
 
 # Packages
 
 Es wurden folgende Packages verwendet:
 
-tidyverse,
-ggplot2,
-zoo,
-scales,
-lubridate,
-mvtnorm,
-caret
+tidyverse  
+ggplot2    
+zoo  
+scales  
+lubridate   
+mvtnorm  
+caret  
+grid  
+gridExtra  
+gt  
+
+
+
