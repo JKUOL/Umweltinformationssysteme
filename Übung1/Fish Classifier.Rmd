@@ -3,14 +3,14 @@ title: "2. Fish Classifier"
 author: "Gruppe 23 Justin König, Ali Abdullah, Rita Tagoula Ngoufo"
 date: "10.05.2023"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     keep_md: yes
     code_folding: hide
     theme: yeti
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: yes
 editor_options:
   markdown:
     wrap: 72

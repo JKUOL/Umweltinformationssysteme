@@ -182,8 +182,8 @@ ggplot(nor_long, aes(x = Time, y = Value, color = Type, group = Type)) +
        x = "Time",
        y = "Concentration",
        color = "Data") +
-  scale_color_manual(values = c("nor_NO2_Ol_2023" = "red", 
-                                "nor_NO2_Ol_2019" = "lightgreen"))
+  scale_color_manual(values = c("nor_NO2_Ol_2023" = "darkblue", 
+                                "nor_NO2_Ol_2019" = "red"))
 ```
 
 <img src="NO2_OL_time_cor_files/figure-html/Normalization time correlation data-1.png" style="display: block; margin: auto;" />
@@ -224,8 +224,8 @@ ggplot(nor_loc_long, aes(x = Time, y = Value, color = Type, group = Type)) +
        x = "Time",
        y = "Concentration",
        color = "Data") +
-  scale_color_manual(values = c("nor_NO2_Ol" = "red", 
-                                "nor_NO2_BS" = "lightgreen"))
+  scale_color_manual(values = c("nor_NO2_Ol" = "darkblue", 
+                                "nor_NO2_BS" = "red"))
 ```
 
 <img src="NO2_OL_time_cor_files/figure-html/Normalization location correlation data-1.png" style="display: block; margin: auto;" />
@@ -295,7 +295,8 @@ beeinflussen, sich im Laufe der Zeit verändert haben. Eine mögliche
 Ursache für solche Veränderungen könnte eine Veränderung im Verkehrsaufkommen 
 oder in der Verkehrszusammensetzung sein, etwa durch den verstärkten Einsatz 
 emissionsarmer Fahrzeuge oder veränderte Verkehrsflüsse infolge von 
-Infrastrukturmaßnahmen. 
+Infrastrukturmaßnahmen. Aber auch Veränderungen im Klima, Bauarbeiten, oder 
+wirtschaftliche Aktivität können eine Rolle spielen.
 
 # Lokale Korrelation
 
@@ -309,12 +310,16 @@ stärkere Korrelation zwischen den Daten der beiden Standorte hin.
 Dies deutet daraufhin, dass die Luftqualität, gemessen an der 
 Stickstoffdioxid-Konzentration, einen ähnlichen Trend aufweist. 
 Dies könnte bedeuten, dass die beiden Messstandorte ähnliche 
-Verkehrsaufkommen haben. Jedoch ist zu beachten, dass der Wert 0.63 
+Verkehrsaufkommen, Regulierungen und Umweltbedinungen aufweisen. 
+Jedoch ist zu beachten, dass der Wert 0.63 
 noch weit von 1 und somit von einer perfekt Korrelation entfernt ist, 
 dies könnte unter anderem am nicht exakt gleichen Verkehrsaufkommen, 
 unterschiedlichen Fahrzeugen, sowie der Ausrichtung und des Standortes
 der Messstation liegen. Die Daten der lokalen Standorte scheinen, 
-jedoch mehr zusammenzuhängen als die Temporalen Daten.
+jedoch mehr zusammenzuhängen als die Temporalen Daten Oldenburgs.
+
+Es ist wichtig zu beachten, das Luftqualität ein komplexes Thema ist und sich 
+viele Faktoren auf diese Auswirken.
 
 # Lineare Regression
 
